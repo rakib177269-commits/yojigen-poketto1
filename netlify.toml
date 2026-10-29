@@ -1,0 +1,11 @@
+# Netlify builds from the `main` branch. Unit tests and database self-tests run
+# before the build and a smoke test of every page after it; any failure stops
+# the deploy. The Next.js runtime
+# (@netlify/plugin-nextjs) is added automatically by Netlify.
+[build]
+  command = "npm run test && npm run test:db && npm run build && npm run test:smoke"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
