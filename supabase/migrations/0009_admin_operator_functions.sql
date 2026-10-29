@@ -1,129 +1,5 @@
--- 0008 Admin panel: staff roles, staff read access (RLS), audit trail and the
--- operator functions (confirm / reject / status / edit / manual order /
--- customer check / team / settings).
---
--- Roles are enforced HERE, not just in the UI:
---   admin    everything, incl. team, settings, CSV export, audit log
---   manager  orders, abandoned carts, (catalogue and coupons in phase 4)
---   support  orders, abandoned carts, customer check
---   packer   sees confirmed/dispatched orders only; can mark them dispatched
--- Every operator write is recorded in audit_log (who, what, when, before/after).
-
--- ---------------------------------------------------------------- role helpers
-create table private.staff_invites (
-  email text primary key check (email = lower(email)),
-  role public.staff_role not null,
-  invited_by uuid references auth.users (id) on delete set null,
-  created_at timestamptz not null default now()
-);
-alter table private.staff_invites enable row level security;
-
--- The owner's account. They become admin the first time they sign in with this
--- verified email address.
-insert into private.staff_invites (email, role) values ('yujigenpoketto@gmail.com', 'admin');
-
-create function private.staff_role() returns public.staff_role
-language sql stable security definer set search_path = '' as $$
-  select s.role from public.staff s where s.user_id = auth.uid() and s.is_active
-$$;
-
-create function private.has_role(variadic roles public.staff_role[]) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select coalesce(private.staff_role() = any (roles), false)
-$$;
-
-create function private.require_role(variadic roles public.staff_role[]) returns public.staff_role
-language plpgsql stable security definer set search_path = '' as $$
-declare
-  r public.staff_role := private.staff_role();
-begin
-  if r is null or not (r = any (roles)) then
-    raise exception using errcode = '42501', message = 'not_allowed';
-  end if;
-  return r;
-end $$;
-
--- RLS policies call these as the signed-in user, so that role needs them.
--- (PostgREST does not expose the private schema; tables in it stay ungranted.)
-grant usage on schema private to authenticated;
-grant execute on function private.staff_role() to authenticated;
-grant execute on function private.has_role(public.staff_role[]) to authenticated;
-
--- ---------------------------------------------------------------- staff read access
-grant select on public.orders, public.order_items, public.order_events, public.customers,
-  public.abandoned_carts, public.audit_log, public.staff, public.coupons, public.store_settings,
-  public.delivery_zones, public.newsletter_subscribers to authenticated;
-
-create policy "staff read orders" on public.orders for select to authenticated
-  using (private.has_role('admin', 'manager', 'support')
-         or (private.has_role('packer') and status in ('confirmed', 'dispatched')));
--- Items and events follow the visibility of their order.
-create policy "staff read order items" on public.order_items for select to authenticated
-  using (exists (select 1 from public.orders o where o.id = order_id));
-create policy "staff read order events" on public.order_events for select to authenticated
-  using (exists (select 1 from public.orders o where o.id = order_id));
-create policy "staff read customers" on public.customers for select to authenticated
-  using (private.has_role('admin', 'manager', 'support'));
-create policy "staff read abandoned carts" on public.abandoned_carts for select to authenticated
-  using (private.has_role('admin', 'manager', 'support'));
-create policy "admins read audit log" on public.audit_log for select to authenticated
-  using (private.has_role('admin'));
-create policy "staff read own row, admins read team" on public.staff for select to authenticated
-  using (user_id = auth.uid() or private.has_role('admin'));
-create policy "managers read coupons" on public.coupons for select to authenticated
-  using (private.has_role('admin', 'manager'));
-create policy "staff read settings" on public.store_settings for select to authenticated
-  using (private.staff_role() is not null);
-create policy "staff read delivery zones" on public.delivery_zones for select to authenticated
-  using (private.staff_role() is not null);
-create policy "managers read subscribers" on public.newsletter_subscribers for select to authenticated
-  using (private.has_role('admin', 'manager'));
--- Staff also see drafts/hidden items (in addition to the public "active only" policies).
-create policy "staff read all products" on public.products for select to authenticated
-  using (private.staff_role() is not null);
-create policy "staff read all variants" on public.product_variants for select to authenticated
-  using (private.staff_role() is not null);
-create policy "staff read all images" on public.product_images for select to authenticated
-  using (private.staff_role() is not null);
-create policy "staff read all categories" on public.categories for select to authenticated
-  using (private.staff_role() is not null);
-create policy "staff read all banners" on public.banners for select to authenticated
-  using (private.staff_role() is not null);
-
--- ---------------------------------------------------------------- audit trail
--- Records every write made by a signed-in user. Customer orders (placed through
--- the service role, no user) are not "operator writes" and are skipped.
-create function private.audit() returns trigger
-language plpgsql security definer set search_path = '' as $$
-declare
-  v_old jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) end;
-  v_new jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) end;
-begin
-  if auth.uid() is null then
-    return coalesce(new, old);
-  end if;
-  if tg_op = 'UPDATE' and (v_old - 'updated_at') = (v_new - 'updated_at') then
-    return new;
-  end if;
-  insert into public.audit_log (actor_id, actor_role, action, table_name, row_id, before, after)
-  values (auth.uid(), private.staff_role()::text, tg_op, tg_table_schema || '.' || tg_table_name,
-          coalesce(v_new, v_old) ->> coalesce(nullif(tg_argv[0], ''), 'id'), v_old, v_new);
-  return coalesce(new, old);
-end $$;
-
-create trigger audit after insert or update or delete on public.orders for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.order_items for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.products for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.product_variants for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.product_images for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.categories for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.banners for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.coupons for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.delivery_zones for each row execute function private.audit('code');
-create trigger audit after insert or update or delete on public.store_settings for each row execute function private.audit();
-create trigger audit after insert or update or delete on public.staff for each row execute function private.audit('user_id');
-create trigger audit after insert or update or delete on public.abandoned_carts for each row execute function private.audit();
-create trigger audit after insert or update or delete on private.staff_invites for each row execute function private.audit('email');
+-- 0009 Admin panel (2/3): operator functions (confirm, reject, status, manual
+-- order, customer check, abandoned carts, team, settings, export). See 0008.
 
 -- ---------------------------------------------------------------- order creation (shared)
 -- The body of place_order, minus rate limits, so operators can enter phone and
@@ -248,35 +124,6 @@ begin
     'total', (v_quote->>'subtotal')::integer - (v_quote->>'discount')::integer + v_fee);
 end $$;
 
--- Storefront entry point: rate limits, then the shared create_order.
-create or replace function public.place_order(p_order jsonb, p_client_key text)
-returns jsonb
-language plpgsql volatile security definer set search_path = '' as $$
-declare
-  v_phone text := private.normalize_bd_phone(p_order->>'phone');
-  v_result jsonb;
-begin
-  if not private.hit_rate_limit('order:ip:' || coalesce(p_client_key, '?'), 8, interval '10 minutes') then
-    return jsonb_build_object('ok', false, 'error', 'rate_limited');
-  end if;
-  if v_phone is not null
-     and not private.hit_rate_limit('order:phone:' || v_phone, 5, interval '1 hour') then
-    return jsonb_build_object('ok', false, 'error', 'rate_limited');
-  end if;
-  begin
-    v_result := private.create_order(p_order, 'web');
-    return v_result - 'id';
-  exception when sqlstate 'P0001' then
-    declare
-      v_message text;
-      v_detail text;
-    begin
-      get stacked diagnostics v_message = message_text, v_detail = pg_exception_detail;
-      return jsonb_build_object('ok', false, 'error', v_message, 'quote', nullif(v_detail, '')::jsonb);
-    end;
-  end;
-end $$;
-
 -- ---------------------------------------------------------------- operator helpers
 create function private.restock_order(p_order_id uuid) returns void
 language sql volatile security definer set search_path = '' as $$
@@ -324,11 +171,12 @@ begin
   select lower(u.email) into v_email from auth.users u
   where u.id = auth.uid() and u.email_confirmed_at is not null;
   if v_email is not null then
-    select * into v_invite from private.staff_invites where email = v_email;
+    select * into v_invite from private.staff_invites
+    where email = v_email and claimed_at is null and cancelled_at is null;
     if found then
       insert into public.staff (user_id, email, role) values (auth.uid(), v_email, v_invite.role)
       on conflict (user_id) do update set role = excluded.role, email = excluded.email, is_active = true;
-      delete from private.staff_invites where email = v_email;
+      update private.staff_invites set claimed_at = now(), claimed_by = auth.uid() where email = v_email;
     end if;
   end if;
   return public.current_staff();
@@ -346,7 +194,8 @@ begin
     return jsonb_build_object('ok', false, 'error', 'rate_limited');
   end if;
   return jsonb_build_object('ok', exists (select 1 from public.staff s where s.email = v_email and s.is_active)
-                                  or exists (select 1 from private.staff_invites i where i.email = v_email));
+                                  or exists (select 1 from private.staff_invites i where i.email = v_email
+                                                 and i.claimed_at is null and i.cancelled_at is null));
 end $$;
 
 create function public.admin_dashboard() returns jsonb
@@ -464,103 +313,6 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
--- Edit a pending/confirmed order. Items are re-priced from the catalogue and
--- stock is adjusted; fee and discount are what the operator enters.
--- p: {name?, phone?, address?, note?, delivery_fee?, discount?, items?: [{product_id, variant_id?, quantity}]}
-create function public.admin_update_order(p_order_id uuid, p jsonb) returns jsonb
-language plpgsql volatile security definer set search_path = '' as $$
-declare
-  o public.orders;
-  v_phone text;
-  v_quote jsonb;
-  v_line jsonb;
-  v_qty integer;
-  v_n integer;
-  v_subtotal integer;
-  v_fee integer;
-  v_discount integer;
-  v_zone public.delivery_zones;
-begin
-  perform private.require_role('admin', 'manager', 'support');
-  o := private.lock_order(p_order_id);
-  if o.status not in ('pending', 'confirmed') then
-    raise exception using errcode = 'P0001', message = 'not_editable';
-  end if;
-
-  v_subtotal := o.subtotal;
-  if p ? 'items' then
-    v_quote := private.price_cart(p->'items', null, null);
-    if not (v_quote->>'ok')::boolean then
-      raise exception using errcode = 'P0001', message = 'cart_changed', detail = v_quote::text;
-    end if;
-    if o.status = 'confirmed' then perform private.adjust_sold_count(p_order_id, -1); end if;
-    perform private.restock_order(p_order_id);
-    delete from public.order_items where order_id = p_order_id;
-    for v_line in select value from jsonb_array_elements(v_quote->'lines') loop
-      v_qty := (v_line->>'quantity')::integer;
-      if v_line->>'variant_id' is not null then
-        update public.product_variants set stock = stock - v_qty
-        where id = (v_line->>'variant_id')::uuid and stock >= v_qty;
-      else
-        update public.products set stock = stock - v_qty
-        where id = (v_line->>'product_id')::uuid and stock >= v_qty;
-      end if;
-      get diagnostics v_n = row_count;
-      if v_n = 0 then
-        raise exception using errcode = 'P0001', message = 'out_of_stock';
-      end if;
-    end loop;
-    insert into public.order_items (order_id, product_id, variant_id, title, variant_name, unit_price, quantity, line_total)
-    select p_order_id, (l->>'product_id')::uuid, (l->>'variant_id')::uuid, l->>'title', l->>'variant_name',
-           (l->>'unit_price')::integer, (l->>'quantity')::integer, (l->>'line_total')::integer
-    from jsonb_array_elements(v_quote->'lines') l;
-    if o.status = 'confirmed' then perform private.adjust_sold_count(p_order_id, 1); end if;
-    v_subtotal := (v_quote->>'subtotal')::integer;
-  end if;
-
-  if p ? 'phone' then
-    v_phone := private.normalize_bd_phone(p->>'phone');
-    if v_phone is null then
-      raise exception using errcode = 'P0001', message = 'invalid_phone';
-    end if;
-  end if;
-  if p ? 'name' and char_length(btrim(p->>'name')) not between 2 and 80 then
-    raise exception using errcode = 'P0001', message = 'invalid_name';
-  end if;
-  if p ? 'address' and char_length(btrim(p->>'address')) not between 8 and 400 then
-    raise exception using errcode = 'P0001', message = 'invalid_address';
-  end if;
-  if p ? 'address' then
-    v_zone := private.resolve_delivery_zone(p->>'address');
-  end if;
-  if p ? 'delivery_fee' and coalesce(p->>'delivery_fee', '') !~ '^[0-9]{1,5}$' then
-    raise exception using errcode = 'P0001', message = 'invalid_fee';
-  end if;
-  if p ? 'discount' and coalesce(p->>'discount', '') !~ '^[0-9]{1,6}$' then
-    raise exception using errcode = 'P0001', message = 'invalid_discount';
-  end if;
-
-  v_fee := coalesce((p->>'delivery_fee')::integer, o.delivery_fee);
-  v_discount := least(coalesce((p->>'discount')::integer, o.discount), v_subtotal);
-
-  update public.orders set
-    name = coalesce(btrim(p->>'name'), name),
-    phone = coalesce(v_phone, phone),
-    address = coalesce(btrim(p->>'address'), address),
-    zone_code = coalesce(v_zone.code, zone_code),
-    note = case when p ? 'note' then nullif(btrim(p->>'note'), '') else note end,
-    subtotal = v_subtotal,
-    discount = v_discount,
-    delivery_fee = v_fee,
-    total = v_subtotal - v_discount + v_fee
-  where id = p_order_id;
-
-  insert into public.order_events (order_id, kind, label, detail, source, actor_id, is_public)
-  values (p_order_id, 'edit', 'Order edited', jsonb_build_object('changed', (select jsonb_agg(k) from jsonb_object_keys(p) k)),
-          'operator', auth.uid(), false);
-  return jsonb_build_object('ok', true);
-end $$;
-
 -- Phone / Facebook orders entered by staff. Same pricing and stock rules as the
 -- shop, no rate limit, optional delivery fee override.
 create function public.admin_create_order(p_order jsonb) returns jsonb
@@ -652,7 +404,8 @@ begin
                                                             'role', s.role, 'is_active', s.is_active, 'created_at', s.created_at)
                                          order by s.created_at) from public.staff s), '[]'::jsonb),
     'invites', coalesce((select jsonb_agg(jsonb_build_object('email', i.email, 'role', i.role, 'created_at', i.created_at)
-                                          order by i.created_at) from private.staff_invites i), '[]'::jsonb));
+                                          order by i.created_at) from private.staff_invites i
+                        where i.claimed_at is null and i.cancelled_at is null), '[]'::jsonb));
 end $$;
 
 create function public.admin_invite_staff(p_email text, p_role public.staff_role) returns jsonb
@@ -668,15 +421,17 @@ begin
     raise exception using errcode = 'P0001', message = 'already_staff';
   end if;
   insert into private.staff_invites (email, role, invited_by) values (v_email, p_role, auth.uid())
-  on conflict (email) do update set role = excluded.role, invited_by = excluded.invited_by;
+  on conflict (email) do update set role = excluded.role, invited_by = excluded.invited_by,
+    created_at = now(), claimed_at = null, claimed_by = null, cancelled_at = null;
   return jsonb_build_object('ok', true);
 end $$;
 
-create function public.admin_delete_invite(p_email text) returns jsonb
+create function public.admin_cancel_invite(p_email text) returns jsonb
 language plpgsql volatile security definer set search_path = '' as $$
 begin
   perform private.require_role('admin');
-  delete from private.staff_invites where email = lower(btrim(p_email));
+  update private.staff_invites set cancelled_at = now()
+  where email = lower(btrim(p_email)) and claimed_at is null;
   return jsonb_build_object('ok', true);
 end $$;
 
@@ -708,15 +463,13 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- grants
-revoke execute on all functions in schema public from public, anon;
-revoke execute on all functions in schema private from public, anon;
+-- New functions get no PUBLIC execute (0007 changed the default), so only grant.
 grant execute on function public.current_staff(), public.claim_staff_invite(), public.admin_dashboard(),
   public.admin_confirm_order(uuid), public.admin_reject_order(uuid, text),
-  public.admin_set_status(uuid, public.order_status, text, boolean), public.admin_update_order(uuid, jsonb),
+  public.admin_set_status(uuid, public.order_status, text, boolean),
   public.admin_create_order(jsonb), public.admin_customer_check(text), public.admin_update_abandoned_cart(uuid, text),
   public.admin_update_settings(jsonb), public.admin_update_zone(text, integer, text, text[]), public.admin_team(),
-  public.admin_invite_staff(text, public.staff_role), public.admin_delete_invite(text),
+  public.admin_invite_staff(text, public.staff_role), public.admin_cancel_invite(text),
   public.admin_update_staff(uuid, public.staff_role, boolean), public.admin_export_orders(date, date)
   to authenticated;
 grant execute on function public.staff_login_allowed(text, text) to service_role;
-grant execute on function public.get_public_settings(), public.get_delivery_zones() to anon, authenticated;

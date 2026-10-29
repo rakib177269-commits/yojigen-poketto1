@@ -1,4 +1,4 @@
--- 0009 Self-tests for the operator functions and role enforcement. Signs in as
+-- 0011 Self-tests for the operator functions and role enforcement. Signs in as
 -- simulated staff (JWT claims set for this transaction only) and checks that the
 -- database itself refuses what a role may not do. Always rolled back.
 
@@ -154,5 +154,4 @@ begin
     'results', results);
 end $$;
 
-revoke execute on function public.run_admin_self_tests() from public, anon, authenticated;
 grant execute on function public.run_admin_self_tests() to service_role;
