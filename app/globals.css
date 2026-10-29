@@ -470,6 +470,11 @@ details > summary { cursor: pointer; }
 .bulk-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; padding: 12px 14px; }
 .bulk-bar .select, .bulk-bar .input { width: auto; flex: 0 1 200px; }
 .variant-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 90px auto; gap: 8px; align-items: center; }
+@media (max-width: 520px) {
+  .variant-row { grid-template-columns: 44px 90px auto; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .variant-row > :first-child { grid-column: 1 / -1; }
+  .variant-row > :last-child { justify-self: start; }
+}
 .variant-row input[type='color'] { width: 44px; height: 44px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; }
 .richtext-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .richtext-tools .btn-sm { min-width: 40px; padding: 0 10px; }

@@ -56,7 +56,7 @@ export default async function ProductsPage({ searchParams }) {
                     <td><input type="checkbox" name="ids" value={p.id} form="bulk" aria-label={`Select ${p.title}`} className="check-box" /></td>
                     <td>{img ? <img src={defaultImageUrl(img.storage_key, img.widths, 400)} alt="" className="list-thumb" /> : <span className="list-thumb empty-thumb">no photo</span>}</td>
                     <td><Link href={`/admin/products/${p.id}`} style={{ fontWeight: 600 }}>{p.title}</Link>
-                      <div className="hint">{p.category?.name ?? 'No category'}{active.length ? ` · ${active.length} colours` : ''}{p.is_sample ? ' · sample' : ''}
+                      <div className="hint">{p.category?.name ?? 'No category'}{active.length ? ` · ${active.length} colour${active.length === 1 ? "" : "s"}` : ''}{p.is_sample ? ' · sample' : ''}
                         {p.import_photo_files.length > 0 && ` · waiting for ${p.import_photo_files.length} photo(s)`}</div></td>
                     <td className="nowrap">{formatTaka(p.price)}{p.compare_at_price ? <div className="hint"><s>{formatTaka(p.compare_at_price)}</s></div> : null}</td>
                     <td className={stock === 0 ? 'error-text' : ''}>{stock}</td>
