@@ -456,3 +456,23 @@ details > summary { cursor: pointer; }
 .panel { min-width: 0; }
 .panel > .table { display: block; overflow-x: auto; }
 .team-row form { flex: 1 1 260px; }
+
+/* catalogue admin */
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.thumb-card { margin: 0; position: relative; display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; cursor: grab; }
+.thumb-card img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); border-radius: 8px; }
+.thumb-card .row-gap { gap: 4px; }
+.thumb-card .btn-sm { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.upload-btn { cursor: pointer; }
+.list-thumb { width: 48px; height: 48px; object-fit: contain; background: var(--surface); border-radius: 8px; display: block; }
+.empty-thumb { display: grid; place-items: center; font-size: 10px; color: var(--muted); }
+.check-box { width: 20px; height: 20px; accent-color: var(--blue); }
+.bulk-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; padding: 12px 14px; }
+.bulk-bar .select, .bulk-bar .input { width: auto; flex: 0 1 200px; }
+.variant-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 90px auto; gap: 8px; align-items: center; }
+.variant-row input[type='color'] { width: 44px; height: 44px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; }
+.richtext-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.richtext-tools .btn-sm { min-width: 40px; padding: 0 10px; }
+.richtext-area { min-height: 160px; overflow-wrap: anywhere; }
+.richtext-area:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.sticky-save { position: sticky; bottom: 0; z-index: 5; background: var(--surface); padding: 12px 0; border-top: 1px solid var(--line); }
