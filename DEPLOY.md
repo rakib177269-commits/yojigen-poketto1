@@ -123,6 +123,9 @@ set a password under "My account" after their first sign-in.
 - After each deploy, check the site on a 375px-wide phone screen, not just desktop.
 
 ## If something breaks
+- **Changes don't show up and Deploys says "Skipped due to account credit usage exceeded":** Netlify's free plan
+  has a monthly credit budget and each production deploy uses part of it. The site stays online, but nothing
+  new (code or environment variables) goes live until you upgrade or the month resets. Batch changes.
 - **"Edge function has crashed" with no logs, and rolling back doesn't fix it:** Deploys → Trigger deploy → **Deploy project without cache** first.
 - **Env var change not showing:** redeploy, since values are baked in at build time.
 - **Checkout says "Something went wrong on our side":** the service key is missing or wrong (step 2). Netlify → Logs → Functions shows `SUPABASE_SERVICE_ROLE_KEY is not set`.
