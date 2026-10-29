@@ -38,8 +38,17 @@ If you ever upgrade Netlify and pick Singapore for functions, move the database 
 Supabase → **Authentication → URL Configuration**:
 - Site URL: `https://yojigen-poketto.netlify.app`
 - Redirect URLs: add `https://yojigen-poketto.netlify.app/**`
-(Change both when the domain is connected.) The owner, yujigenpoketto@gmail.com, becomes admin on first
-sign-in at `/admin/login` with "Email me a sign-in link". Open the link on the same device.
+(Change both when the domain is connected.)
+
+Then make email links work on any device. Supabase → **Authentication → Emails → Templates**. In both
+**Magic link** and **Confirm signup**, replace the link (`{{ .ConfirmationURL }}`) with:
+
+    {{ .SiteURL }}/admin/auth/confirm?token_hash={{ .TokenHash }}&type=email
+
+Without this, the default link only works in the browser that requested it.
+Staff become staff on their first sign-in with an invited, verified email at `/admin/login`.
+Supabase's built-in email sends only ~2 emails per hour until Resend is set up (phase 7); staff should
+set a password under "My account" after their first sign-in.
 
 ## Environment variables
 
