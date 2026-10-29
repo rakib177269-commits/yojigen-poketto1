@@ -6,7 +6,7 @@
 |---|---|
 | Code | GitHub `rakib177269-commits/yojigen-poketto1`, branch `main` |
 | Hosting | Netlify project `yojigen-poketto` → https://yojigen-poketto.netlify.app |
-| Database, auth, storage | Supabase project `yojigen-poketto-shop` (ref `zvmryutfmbqdidulxrlv`, Singapore), free plan |
+| Database, auth, storage | Supabase project `yojigen-poketto` (ref `siucsvsvrpqbfpmbnxlx`, Ohio `us-east-2`), free plan |
 
 ## One-time setup (owner)
 
@@ -17,7 +17,7 @@
 4. Leave build settings as detected: `netlify.toml` already sets the build command and the `.next` publish folder.
 
 ### 2. Put the Supabase secret key into Netlify
-1. Supabase dashboard → project **yojigen-poketto-shop** → **Project Settings → API Keys**.
+1. Supabase dashboard → project **yojigen-poketto** → **Project Settings → API Keys**.
    Copy the **service_role** key (legacy tab) or create a **secret key** (`sb_secret_…`).
 2. Netlify → **Project configuration → Environment variables → Add a variable**:
    - Key: `SUPABASE_SERVICE_ROLE_KEY`
@@ -27,15 +27,18 @@
 
 Never paste this key into chat, code or anything starting with `NEXT_PUBLIC_`.
 
-### 3. Run functions next to the database (speed)
-Netlify → **Project configuration → Build & deploy → Functions region** → **Asia Pacific (Singapore)** → save, then redeploy.
-By default functions run in Ohio (USA), and every page would make several round trips to Singapore.
+### 3. Keep the database next to the functions (speed)
+Netlify's free plan runs functions in Ohio (US East) and the region can't be changed without a paid plan.
+So the database lives in the same region (Supabase `us-east-2`). Customers in Bangladesh still reach the
+site through Netlify's nearby CDN; only the server-to-database hop is in Ohio, and it is a few milliseconds.
+(Measured after the move: checkout price check 0.5–1.2s → 0.25s, placing an order 1.9s → 0.47s.)
+If you ever upgrade Netlify and pick Singapore for functions, move the database to Singapore too.
 
 ## Environment variables
 
 | Name | Public? | What it is | Set by |
 |---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | `https://zvmryutfmbqdidulxrlv.supabase.co` | done |
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | `https://siucsvsvrpqbfpmbnxlx.supabase.co` | done |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase publishable key. RLS limits it to reading the active catalogue. | done |
 | `NEXT_PUBLIC_SITE_URL` | yes | `https://yojigen-poketto.netlify.app` (change when the domain is connected) | done |
 | `SUPABASE_SERVICE_ROLE_KEY` | **SECRET** | Lets our server call the order functions. | **owner** (step 2) |

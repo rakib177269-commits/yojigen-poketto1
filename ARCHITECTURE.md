@@ -55,7 +55,7 @@ safe on production. Unit tests cover the JS side. A smoke test renders every pag
 | Phase | Status |
 |---|---|
 | 1. Schema, RLS, core RPCs | Done |
-| 2. Storefront, checkout, COD orders | Built and tested locally; live once Netlify is linked to GitHub and the service key is set |
+| 2. Storefront, checkout, COD orders | Live; full order journey verified on the live site at 375px |
 | 3. Admin panel, staff roles, audit | Not started (tables `staff`, `audit_log` exist) |
 | 4. Image upload, catalogue management | Not started |
 | 5. Pathao | Not started |
@@ -65,9 +65,8 @@ safe on production. Unit tests cover the JS side. A smoke test renders every pag
 
 ## Known gaps (honest list)
 
-- **Not yet verified on the live site.** The build environment used so far cannot reach Supabase or
-  netlify.app, so pages were tested in a local browser at 375px and 1280px against a stand-in for the
-  database API, plus 38 database self-tests run directly in Supabase. The first live deploy still needs a full click-through.
+- **Old Singapore database** (`yojigen-poketto-shop`) is paused, not deleted. It holds only one test
+  order. Delete it from the Supabase dashboard once you're happy with the Ohio one.
 - **No admin yet.** Until phase 3, orders can only be seen in the Supabase table editor.
 - **Maintenance mode** has a database flag but no switch or page yet (phase 3).
 - **Customer accounts** (phone OTP, email, Google) are phase 7; checkout is guest-only for now.
