@@ -53,8 +53,9 @@ set a password under "My account" after their first sign-in.
 1. Pathao merchant panel → **Developer API** → enable **Merchant API Credentials**; copy the Client ID and Client Secret.
 2. Netlify → Project configuration → Environment variables → add (mark each **secret**):
    `PATHAO_CLIENT_ID`, `PATHAO_CLIENT_SECRET`, and `PATHAO_WEBHOOK_SECRET` (any long random text you make up).
-   Only if "Test connection" later says the login is wrong: also add `PATHAO_USERNAME` / `PATHAO_PASSWORD`
-   (the merchant panel email + password). Then **Deploys → Trigger deploy**.
+   **Your account also needs** `PATHAO_USERNAME` / `PATHAO_PASSWORD` (the merchant panel email + password, both
+   secret): with only the Client ID/Secret Pathao answers "The user credentials were incorrect".
+   Then **Deploys → Trigger deploy**.
 3. Shop admin → **Settings → Pathao courier → Test connection**: it lists your Pathao stores. Put the store's
    ID in "Pathao store ID" and save.
 4. Pathao merchant panel → **Developer API → Webhook**: Callback URL `https://yojigen-pokettobd.com/api/webhooks/pathao`,
@@ -137,6 +138,11 @@ no longer used. If the domain ever changes:
 5. Pathao webhook URL (phase 5) and, later, Meta/Google domain settings.
 6. Email (Resend) needs SPF/DKIM DNS records on the domain; that step comes in phase 7.
 
+## Health check
+From the Supabase SQL editor: `select private.call_sweep('/api/sweep/health');` then
+`select content from net._http_response order by id desc limit 1;` shows which integrations are set up
+(never the keys) and tests the Pathao login by listing your stores.
+
 ## Backups
 `.github/workflows/backup.yml` dumps the database every night (03:23 Dhaka) with the Supabase CLI, **encrypts** it
 and keeps it 30 days as a GitHub Actions artifact (Actions → "Daily database backup" → a run → Artifacts).
@@ -168,6 +174,6 @@ Supabase variables at the new project. On Supabase Pro, daily backups are also b
 - [ ] Backup secrets added in GitHub and one backup run succeeded (Backups)
 - [ ] Supabase moved to the Pro plan (free plan pauses after 7 idle days); then enable Auth → Leaked password protection
 - [ ] Make the GitHub repository private (it holds no secrets, but there is no reason for it to be public)
-- [ ] Delete the two disabled `claude-test-*@selftest.local` users (Authentication → Users)
+- [x] Delete the two disabled `claude-test-*@selftest.local` users (done)
 - [ ] Delete the paused old Singapore Supabase project (`yojigen-poketto-shop`)
 - [ ] Place one real order yourself end to end: confirm, send to Pathao, receive SMS/email, see it in Facebook/GA4
