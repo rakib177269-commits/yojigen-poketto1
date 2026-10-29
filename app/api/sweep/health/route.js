@@ -4,7 +4,7 @@
 import { supabaseService } from '../../../../lib/server/supabase.js';
 import { sweepAllowed } from '../../../../lib/server/sweep.js';
 import { getSettings } from '../../../../lib/server/catalog.js';
-import { pathao, pathaoEnvStatus, PathaoError } from '../../../../lib/server/pathao.js';
+import { pathao, pathaoEnvShape, pathaoEnvStatus, PathaoError } from '../../../../lib/server/pathao.js';
 import { notifyStatus } from '../../../../lib/server/notify.js';
 import { serverVendors, tokenStatus } from '../../../../lib/server/marketing.js';
 import { SITE } from '../../../../lib/site.js';
@@ -16,7 +16,7 @@ export async function POST(request) {
   const integrations = (await getSettings())?.integrations ?? {};
   const report = {
     site_url: SITE.url,
-    pathao: { env: pathaoEnvStatus(), store_id: integrations.pathao?.store_id ?? null },
+    pathao: { env: pathaoEnvStatus(), shape: pathaoEnvShape(), store_id: integrations.pathao?.store_id ?? null },
     messages: notifyStatus(),
     marketing: { ids: { meta: Boolean(integrations.tracking?.meta_pixel_id), ga4: Boolean(integrations.tracking?.ga4_id) },
       tokens: tokenStatus(), server_sending: serverVendors(integrations.tracking) },

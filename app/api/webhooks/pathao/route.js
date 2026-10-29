@@ -17,7 +17,7 @@ function accepted(request, body) {
 }
 
 function signatureOk(request) {
-  const expected = process.env.PATHAO_WEBHOOK_SECRET;
+  const expected = (process.env.PATHAO_WEBHOOK_SECRET ?? '').trim();
   if (!expected) return false;
   const a = Buffer.from(request.headers.get('x-pathao-signature') ?? '');
   const b = Buffer.from(expected);
