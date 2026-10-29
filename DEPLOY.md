@@ -72,8 +72,8 @@ set a password under "My account" after their first sign-in.
 | `NEXT_PUBLIC_SITE_URL` | yes | `https://yojigen-pokettobd.com` | done |
 | `SUPABASE_SERVICE_ROLE_KEY` | **SECRET** | Lets our server call the order functions. | **owner** (step 2) |
 
-| `PATHAO_CLIENT_ID` / `PATHAO_CLIENT_SECRET` | **SECRET** | Pathao merchant API keys | **owner** (step 5) |
-| `PATHAO_WEBHOOK_SECRET` | **SECRET** | Text Pathao sends with every status update; anything else is refused | **owner** (step 5) |
+| `PATHAO_CLIENT_ID` / `PATHAO_CLIENT_SECRET` | **SECRET** | Pathao merchant API keys (production context, marked secret) | done |
+| `PATHAO_WEBHOOK_SECRET` | server-only | Text Pathao sends with every status update; anything else is refused. Random value set; not marked "secret" in Netlify so the owner can copy it into Pathao's webhook form | done |
 | `PATHAO_USERNAME` / `PATHAO_PASSWORD` | **SECRET** | Only for older Pathao accounts that need the login to issue a token | owner, if needed |
 | `PATHAO_WEBHOOK_INTEGRATION_SECRET` | secret | Only if Pathao's webhook verification shows a different value | owner, if needed |
 | `PATHAO_BASE_URL` | no | Empty = live Pathao. `https://courier-api-sandbox.pathao.com` for testing | optional |
