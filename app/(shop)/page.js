@@ -3,9 +3,34 @@ import ProductCard from '../../components/ProductCard.js';
 import ProductImage from '../../components/ProductImage.js';
 import { getBanners, getBestSellers, getCategories, getNewArrivals } from '../../lib/server/catalog.js';
 import { imageSrcSet, defaultImageUrl } from '../../lib/images.js';
+import { headers } from 'next/headers';
 import { SITE } from '../../lib/site.js';
 
 export const metadata = { alternates: { canonical: '/' } };
+
+// Lets search engines show the shop's name, logo, contacts and a search box.
+const ld = (data) => JSON.stringify(data).replace(/</g, '\\u003c');
+const SHOP_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'OnlineStore',
+    name: SITE.name,
+    url: SITE.url,
+    logo: `${SITE.url}/apple-icon.png`,
+    description: SITE.tagline,
+    telephone: SITE.phoneIntl,
+    sameAs: [SITE.facebook, SITE.instagram],
+    address: { '@type': 'PostalAddress', streetAddress: SITE.address, addressCountry: 'BD' },
+    contactPoint: { '@type': 'ContactPoint', telephone: SITE.phoneIntl, contactType: 'customer service', areaServed: 'BD', availableLanguage: ['en', 'bn'] },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    url: SITE.url,
+    potentialAction: { '@type': 'SearchAction', target: `${SITE.url}/shop?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+  },
+];
 
 function Banner({ banner, priority }) {
   const inner = (
@@ -43,8 +68,10 @@ export default async function HomePage() {
   // Category tiles use the newest product photo in that category.
   const tileImage = (slug) => newArrivals.find((p) => p.category_slug === slug && p.image_key);
 
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <>
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: ld(SHOP_LD) }} />
       {banners.length > 0 ? (
         <section aria-label="Featured">
           {banners.slice(0, 1).map((b) => <Banner key={b.id} banner={b} priority />)}

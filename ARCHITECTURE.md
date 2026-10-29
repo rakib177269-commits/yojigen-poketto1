@@ -105,6 +105,10 @@ everyone out once functions restart). `/account` lists the customer's orders (ne
 them save name/email; checkout is pre-filled from their last order. Google sign-in was left out on purpose
 (needs a Google Cloud app; phone sign-in is what Bangladeshi shoppers expect).
 
+**Backups.** `.github/workflows/backup.yml`: Supabase CLI `db dump` (roles, schema, data) over the session
+pooler every night, tar + AES-256 (openssl, PBKDF2) with a passphrase secret, 30-day artifact. Encryption is
+required because the repository is public. Storage files are not included.
+
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
 safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
@@ -123,7 +127,7 @@ message/sign-in checks the same way. Unit tests cover the JS side. A smoke test 
 | 5. Pathao | Built and tested without live Pathao keys: booking (single + bulk), retry after failure, manual city/zone fallback, webhook (verify, signature, duplicates, delivered/returned), status refresh, customer history. First real booking waits for the owner's Pathao keys |
 | 6. Meta Pixel + CAPI, GA4 | Built: tags on shop pages only, server mirror, Purchase after confirmation only. Browser-tested with dummy ids (no CSP violations, Purchase refused in browser and at /api/capi, nothing on admin). Real check in Meta Test Events / GA4 DebugView waits for the owner's ids and tokens. TikTok dropped |
 | 7. Emails, SMS, accounts | Built: message outbox + Settings, SMS sign-in, account page, checkout pre-fill. Tested: database rules (13 checks), live 5-minute job (messages correctly skipped without providers), account/settings/order pages at 375px. Real sending waits for the owner's Resend + SMS keys |
-| 8. Backups, SEO polish, launch | Not started |
+| 8. Backups, SEO polish, launch | Built: encrypted nightly backup workflow (needs 2 GitHub secrets), shop + search structured data, HSTS, 13 foreign-key indexes from the Supabase advisor, one-click sample removal, launch checklist in DEPLOY.md. Speed: first paint under 0.4 s locally, ~140 KB compressed JS |
 
 ## Known gaps (honest list)
 
@@ -145,4 +149,8 @@ message/sign-in checks the same way. Unit tests cover the JS side. A smoke test 
 - **Double-submit protection** is the disabled button only; a network retry could in theory place a
   second order. An idempotency key is planned with the admin work.
 - **Outskirts delivery time** "2–3 days" is a placeholder until the owner confirms it.
-- **Supabase free plan** pauses after 7 days without traffic and has no automatic backups.
+- **Supabase free plan** pauses after 7 days without traffic and has no automatic backups (the GitHub backup
+  covers the database once its secrets are added).
+- **Advisor notes left as they are:** `pg_net` lives in the public schema (moving it would break the scheduled
+  jobs for no real gain); the `staff` read policy calls `auth.uid()` per row (tiny table); "multiple permissive
+  policies" on catalogue tables are the intended public + staff pair; leaked-password protection needs Pro.

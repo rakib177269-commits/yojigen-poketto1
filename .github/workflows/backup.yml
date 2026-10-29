@@ -1,0 +1,69 @@
+# Daily database backup (03:23 Dhaka time) using the Supabase CLI's pg_dump,
+# over the session pooler. The dump is ENCRYPTED before it is stored as a
+# workflow artifact (kept 30 days): this repository is public, and the dump
+# contains customer names, phones and addresses.
+#
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL     session pooler URI from Supabase -> Connect -> Session pooler
+#   BACKUP_PASSPHRASE   long random text; keep a copy somewhere safe, it is needed to restore
+# Restore steps: DEPLOY.md -> "Backups".
+name: Daily database backup
+
+on:
+  schedule:
+    - cron: '23 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check secrets
+        id: check
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::warning::Backup skipped: add the SUPABASE_DB_URL and BACKUP_PASSPHRASE repository secrets (see DEPLOY.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.check.outputs.ready == 'true'
+        with:
+          version: latest
+
+      - name: Dump roles, schema and data
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir dump
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/data.sql --use-copy --data-only
+          ls -la dump
+          # A dump without orders is not a backup.
+          grep -q 'COPY "public"."orders"' dump/data.sql
+
+      - name: Encrypt
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          stamp=$(date -u +%Y-%m-%d)
+          tar -czf - dump | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -pass env:BACKUP_PASSPHRASE -out "yojigen-db-$stamp.tar.gz.enc"
+          rm -rf dump
+          echo "FILE=yojigen-db-$stamp.tar.gz.enc" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 30
+          if-no-files-found: error

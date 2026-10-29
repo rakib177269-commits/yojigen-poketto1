@@ -137,9 +137,37 @@ no longer used. If the domain ever changes:
 5. Pathao webhook URL (phase 5) and, later, Meta/Google domain settings.
 6. Email (Resend) needs SPF/DKIM DNS records on the domain; that step comes in phase 7.
 
+## Backups
+`.github/workflows/backup.yml` dumps the database every night (03:23 Dhaka) with the Supabase CLI, **encrypts** it
+and keeps it 30 days as a GitHub Actions artifact (Actions → "Daily database backup" → a run → Artifacts).
+Product photos live in Supabase Storage and are not in this dump (keep your original photos).
+
+One-time setup (GitHub → this repository → Settings → Secrets and variables → Actions → New repository secret):
+- `SUPABASE_DB_URL`: Supabase → **Connect** → **Session pooler** → URI, with your database password filled in.
+- `BACKUP_PASSPHRASE`: a long random sentence. Store a copy in your password manager: without it a backup
+  cannot be opened. Then Actions → Daily database backup → **Run workflow** once to check it works.
+
+Restore (into a new or empty Supabase project, from a terminal with the Supabase CLI / `psql`):
+
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in yojigen-db-DATE.tar.gz.enc -out backup.tar.gz   # asks for the passphrase
+    tar -xzf backup.tar.gz
+    psql --single-transaction --variable ON_ERROR_STOP=1 --file dump/roles.sql --file dump/schema.sql \
+      --command 'SET session_replication_role = replica' --file dump/data.sql --dbname "NEW_DATABASE_URL"
+
+Then re-run any `cron.schedule` lines from `supabase/migrations` (jobs are per project) and point Netlify's
+Supabase variables at the new project. On Supabase Pro, daily backups are also built in.
+
 ## Before launch (checklist, kept up to date)
-- [ ] Remove sample products (a migration deletes `is_sample` products and `/public/sample`)
-- [ ] Real delivery times confirmed (outskirts is set to "2–3 days" as a placeholder)
+- [ ] Real products in; then Admin → Products → **Remove sample products** (one click; old orders keep their item names)
+- [ ] Real delivery times confirmed (outskirts is set to "2–3 days" as a placeholder; Admin → Settings → Delivery zones)
 - [ ] Owner reviewed About / Returns / Privacy / Terms text
-- [ ] Supabase moved to the Pro plan (free plan pauses after 7 idle days and has no backups); then enable Auth → Leaked password protection
+- [ ] Supabase → Authentication → URL Configuration uses `https://yojigen-pokettobd.com` (step 4)
+- [ ] Pathao: Test connection → store ID saved → webhook verified → one real parcel sent (step 5)
+- [ ] Facebook Pixel + GA4 ids saved, tokens in Netlify, checked in Test Events / DebugView (step 6)
+- [ ] Resend domain verified + SMS provider keys; test SMS and test email received (step 7)
+- [ ] Backup secrets added in GitHub and one backup run succeeded (Backups)
+- [ ] Supabase moved to the Pro plan (free plan pauses after 7 idle days); then enable Auth → Leaked password protection
+- [ ] Make the GitHub repository private (it holds no secrets, but there is no reason for it to be public)
 - [ ] Delete the two disabled `claude-test-*@selftest.local` users (Authentication → Users)
+- [ ] Delete the paused old Singapore Supabase project (`yojigen-poketto-shop`)
+- [ ] Place one real order yourself end to end: confirm, send to Pathao, receive SMS/email, see it in Facebook/GA4

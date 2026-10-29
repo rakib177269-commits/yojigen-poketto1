@@ -20,8 +20,8 @@ npm run dev                  # http://localhost:3000
 ## Tests
 
 ```bash
-npm test             # unit tests: phone numbers, CSP, HTML sanitiser, formatting
-npm run test:db      # database self-tests (prices, fees, coupons, stock), needs the service key
+npm test             # unit tests: phone, CSP, sanitiser, formatting, import, Pathao, marketing, messages, sessions
+npm run test:db      # 6 database self-test suites (orders, staff, catalogue, courier, marketing, messages); needs the service key
 npm run build && npm run test:smoke   # every page renders
 ```
 
@@ -37,6 +37,7 @@ lib/                 shared helpers (phone, CSP, images, formatting); lib/server
 proxy.js             per-request Content-Security-Policy nonce + noindex headers
 supabase/migrations/ numbered SQL migrations: the only way the database changes
 scripts/             test runners, sample image generator
+.github/workflows/   nightly encrypted database backup
 docs/                product upload spreadsheet template
 ```
 

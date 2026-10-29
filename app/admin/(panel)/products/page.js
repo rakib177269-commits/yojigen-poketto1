@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireStaff } from '../../../../lib/server/auth.js';
 import BulkBar from '../../../../components/admin/BulkBar.js';
+import ActionButton from '../../../../components/admin/ActionButton.js';
+import { removeSampleProducts } from '../../../../lib/admin/catalog-actions.js';
 import { formatTaka } from '../../../../components/admin/ui.js';
 import { defaultImageUrl } from '../../../../lib/images.js';
 
@@ -29,6 +31,13 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       </div>
       {deleted && <div className="notice" style={{ marginBottom: 12 }}>Product deleted.</div>}
+      {staff.role === 'admin' && rows.some((p) => p.is_sample) && (
+        <div className="notice row-gap" style={{ marginBottom: 12 }}>
+          <span>{rows.filter((p) => p.is_sample).length} sample products are still in the shop. Remove them before launch, once your real products are in.</span>
+          <ActionButton action={removeSampleProducts} className="btn btn-ghost btn-sm"
+            confirm="Delete ALL sample products now? This cannot be undone. Past orders keep their item names.">Remove sample products</ActionButton>
+        </div>
+      )}
       <nav className="chips">
         <Link className="chip" href="/admin/products" aria-current={!status && !photos ? 'page' : undefined}>All</Link>
         {STATUS.map((s) => <Link key={s} className="chip" href={`/admin/products?status=${s}`} aria-current={status === s ? 'page' : undefined}>{s[0].toUpperCase() + s.slice(1)}</Link>)}
