@@ -5,7 +5,7 @@ import { getStaff } from '../../../lib/server/auth.js';
 export const metadata = { title: 'Staff sign-in' };
 
 const ERRORS = {
-  link: 'That sign-in link is invalid or expired, or it was opened in a different browser. Request a new one here.',
+  link: 'That sign-in link didn’t work: it was already used, it expired, or it was opened in a different browser than the one that asked for it. Request a new one, or use your password.',
   access: 'This account does not have staff access. Ask the owner to invite you.',
 };
 
