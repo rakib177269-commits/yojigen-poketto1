@@ -31,7 +31,7 @@ export default async function CategoriesPage() {
       <h1 className="admin-h1">Categories</h1>
       <details className="panel" style={{ marginBottom: 16 }}>
         <summary><strong>+ New category</strong></summary>
-        <div style={{ marginTop: 12 }}><ActionForm action={saveCategory} submitLabel="Create category"><CategoryFields /></ActionForm></div>
+        <div style={{ marginTop: 12 }}><ActionForm action={saveCategory} submitLabel="Create category" resetOnSuccess><CategoryFields /></ActionForm></div>
       </details>
       {(cats ?? []).map((c) => (
         <details key={c.id} className="panel" style={{ marginBottom: 10 }}>

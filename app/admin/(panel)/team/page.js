@@ -31,7 +31,7 @@ export default async function TeamPage() {
       <h1 className="admin-h1">Team</h1>
       <section className="panel">
         <h2>Invite someone</h2>
-        <ActionForm action={inviteStaff} submitLabel="Invite" className="form-2 align-end">
+        <ActionForm action={inviteStaff} submitLabel="Invite" resetOnSuccess className="form-2 align-end">
           <div className="field"><label htmlFor="inv-email">Email</label><input id="inv-email" name="email" type="email" className="input" required /></div>
           <div className="field"><label htmlFor="inv-role">Role</label><RoleSelect id="inv-role" /></div>
         </ActionForm>

@@ -19,6 +19,7 @@ export default function ActionButton({ action, children, className = 'btn btn-pr
         {pending ? 'Working…' : children}
       </button>
       {result?.error && <span className="error-text" role="alert">{result.error}</span>}
+      {typeof result?.ok === 'string' && <span className="ok-text" role="status">{result.ok}</span>}
     </span>
   );
 }

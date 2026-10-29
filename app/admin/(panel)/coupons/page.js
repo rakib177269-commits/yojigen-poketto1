@@ -50,7 +50,7 @@ export default async function CouponsPage() {
       <h1 className="admin-h1">Coupons</h1>
       <details className="panel" style={{ marginBottom: 16 }}>
         <summary><strong>+ New coupon</strong></summary>
-        <div style={{ marginTop: 12 }}><ActionForm action={saveCoupon} submitLabel="Create coupon"><CouponFields /></ActionForm></div>
+        <div style={{ marginTop: 12 }}><ActionForm action={saveCoupon} submitLabel="Create coupon" resetOnSuccess><CouponFields /></ActionForm></div>
       </details>
       {(coupons ?? []).length === 0 && <p className="empty">No coupons yet.</p>}
       {(coupons ?? []).map((c) => (

@@ -1,11 +1,21 @@
 'use client';
 // A form bound to a server action, with an inline success/error message.
-import { useActionState } from 'react';
+// Submitted by hand (not as a form action) so React doesn't clear what was typed
+// when the save fails; "create" forms pass resetOnSuccess to start fresh after.
+import { startTransition, useActionState, useEffect, useRef } from 'react';
 
-export default function ActionForm({ action, children, submitLabel, className = 'form-grid', submitClass = 'btn btn-primary' }) {
+export default function ActionForm({ action, children, submitLabel, className = 'form-grid', submitClass = 'btn btn-primary', resetOnSuccess = false }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const form = useRef(null);
+  useEffect(() => {
+    if (resetOnSuccess && state?.ok) form.current?.reset();
+  }, [state, resetOnSuccess]);
   return (
-    <form action={formAction} className={className}>
+    <form ref={form} className={className} onSubmit={(e) => {
+      e.preventDefault();
+      const data = new FormData(e.currentTarget);
+      startTransition(() => formAction(data));
+    }}>
       {children}
       <div className="form-actions">
         <button className={submitClass} disabled={pending}>{pending ? 'Saving…' : submitLabel}</button>
