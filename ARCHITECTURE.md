@@ -90,11 +90,27 @@ and the GA4 client id from the `_ga` cookie (kept in the order's `utm`). Per-ven
 (`capi_sent_at`, `marketing_sent`, `capi_last_error`, max 5 attempts) and shown on the order page.
 TikTok was dropped at the owner's request (the database still accepts a TikTok id but nothing uses it).
 
+**Customer messages.** An outbox (`private.notifications`, unique per order + channel + kind) filled by a
+trigger on orders: placed / confirmed / dispatched / delivered / cancelled (never for rejected orders), plus a
+"new order" email to the owner. Which channel sends what is set in Settings (defaults: SMS on confirmed and
+dispatched only, since SMS costs money; email on everything). `lib/server/notify.js` sends via Resend (email)
+and BulkSMSBD or Alpha SMS (`SMS_PROVIDER`); it runs right after the change (`after()`, so the page isn't
+slowed) and from `/api/sweep/notify` every 5 minutes for retries (max 5 tries). Without a provider a message
+is marked "skipped", never sent late. SMS texts are plain ASCII under 160 characters (one SMS each).
+
+**Customer accounts.** Phone number + 6-digit SMS code (`otp_request` / `otp_verify`: only a hash is stored,
+5 minutes, 5 tries, max 3 codes per number per 15 minutes and 10 per visitor per hour). The server then sets
+`yp_session`, an HttpOnly cookie signed with HMAC-SHA256 using a secret in Supabase Vault (rotating it signs
+everyone out once functions restart). `/account` lists the customer's orders (never rejected ones) and lets
+them save name/email; checkout is pre-filled from their last order. Google sign-in was left out on purpose
+(needs a Google Cloud app; phone sign-in is what Bangladeshi shoppers expect).
+
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
 safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
 `run_catalog_self_tests()` 13 catalogue checks and `run_courier_self_tests()` 13 Pathao booking/webhook
-checks and `run_marketing_self_tests()` 7 Purchase-reporting checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
+checks, `run_marketing_self_tests()` 7 Purchase-reporting checks and `run_messages_self_tests()` 13
+message/sign-in checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
 
 ## Status by phase
 
@@ -106,7 +122,7 @@ checks and `run_marketing_self_tests()` 7 Purchase-reporting checks the same way
 | 4. Image upload, catalogue management | Built. Products, colours, categories, coupons, bulk edit and spreadsheet import browser-tested at 375px and desktop against the real database. Live photo upload and delete buttons are tested once migration 0013 is applied |
 | 5. Pathao | Built and tested without live Pathao keys: booking (single + bulk), retry after failure, manual city/zone fallback, webhook (verify, signature, duplicates, delivered/returned), status refresh, customer history. First real booking waits for the owner's Pathao keys |
 | 6. Meta Pixel + CAPI, GA4 | Built: tags on shop pages only, server mirror, Purchase after confirmation only. Browser-tested with dummy ids (no CSP violations, Purchase refused in browser and at /api/capi, nothing on admin). Real check in Meta Test Events / GA4 DebugView waits for the owner's ids and tokens. TikTok dropped |
-| 7. Emails, SMS OTP, accounts | Not started |
+| 7. Emails, SMS, accounts | Built: message outbox + Settings, SMS sign-in, account page, checkout pre-fill. Tested: database rules (13 checks), live 5-minute job (messages correctly skipped without providers), account/settings/order pages at 375px. Real sending waits for the owner's Resend + SMS keys |
 | 8. Backups, SEO polish, launch | Not started |
 
 ## Known gaps (honest list)
@@ -124,7 +140,8 @@ checks and `run_marketing_self_tests()` 7 Purchase-reporting checks the same way
   (names starting "TEST") remain for the record.
 - **Migrations 0010 and 0013** were applied by the owner in the SQL editor (the Supabase connector's
   confirmation prompt could not be answered); they are recorded in the migration history like the others.
-- **Customer accounts** (phone OTP, email, Google) are phase 7; checkout is guest-only for now.
+- **Customer accounts** need an SMS provider; until one is set, /account explains that accounts open soon and checkout stays guest-only.
+- **Signed-in view not clicked through live**: signing a test cookie with the live secret was (rightly) blocked; it is covered by unit tests (cookie signing/forgery/expiry) and the database tests, and the forged-cookie case was checked in the browser. The secret was rotated afterwards.
 - **Double-submit protection** is the disabled button only; a network retry could in theory place a
   second order. An idempotency key is planned with the admin work.
 - **Outskirts delivery time** "2–3 days" is a placeholder until the owner confirms it.

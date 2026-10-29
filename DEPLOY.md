@@ -75,6 +75,20 @@ set a password under "My account" after their first sign-in.
    `META_TEST_EVENT_CODE`** and redeploy. Check Google in GA4 → Admin → **DebugView** / Realtime.
 4. Verify the domain in Meta Business Settings → Brand safety → Domains (`yojigen-pokettobd.com`).
 
+### 7. Customer emails and SMS (also turns on customer accounts)
+1. **Email (Resend):** sign up at resend.com → **Domains → Add** `yojigen-pokettobd.com` → copy the DNS records it
+   shows into Netlify → **Domain management → yojigen-pokettobd.com → DNS settings → Add record** → wait for
+   "Verified". Then **API Keys → Create** and set in Netlify: `RESEND_API_KEY` (secret), `EMAIL_FROM` =
+   `Yojigen Poketto <orders@yojigen-pokettobd.com>`, optional `EMAIL_REPLY_TO` = your Gmail.
+2. **SMS:** open an account with **BulkSMSBD** (bulksmsbd.net; needs an approved sender ID) or **Alpha SMS**
+   (sms.net.bd). Set in Netlify: `SMS_PROVIDER` = `bulksmsbd` or `alpha`, `SMS_API_KEY` (secret), and
+   `SMS_SENDER_ID` (required for BulkSMSBD). Redeploy.
+3. Admin → **Settings → Customer messages**: choose which events send SMS / email, add your email for new-order
+   alerts, then use **Send test SMS / Send test email**.
+4. Customer accounts (`/account`, sign in by SMS code) switch on by themselves once SMS works.
+5. Optional: use Resend as Supabase's email sender too (Supabase → Authentication → SMTP), which removes the
+   ~2 staff sign-in emails per hour limit.
+
 ## Environment variables
 
 | Name | Public? | What it is | Set by |
@@ -95,7 +109,12 @@ set a password under "My account" after their first sign-in.
 | `META_GRAPH_VERSION` | no | Graph API version, default `v23.0` | optional |
 | `GA4_API_SECRET` | **SECRET** | GA4 Measurement Protocol secret (server-side purchase) | **owner** (step 6) |
 
-Later phases add Resend and SMS keys; they will be listed here when built.
+| `RESEND_API_KEY` | **SECRET** | Resend API key (order emails) | **owner** (step 7) |
+| `EMAIL_FROM` | no | Sender, e.g. `Yojigen Poketto <orders@yojigen-pokettobd.com>` (domain verified in Resend) | **owner** (step 7) |
+| `EMAIL_REPLY_TO` | no | Where customer replies go | optional |
+| `SMS_PROVIDER` | no | `bulksmsbd` or `alpha` | **owner** (step 7) |
+| `SMS_API_KEY` | **SECRET** | SMS provider API key | **owner** (step 7) |
+| `SMS_SENDER_ID` | no | Approved sender ID (required for BulkSMSBD) | **owner** (step 7) |
 
 ## Deploy checks
 `netlify.toml` runs, in order: unit tests → database self-tests → `next build` → smoke test of every page.
