@@ -430,6 +430,11 @@ dialog.drawer.left[open] { animation-name: slide-in-left; }
 @media (min-width: 640px) { .form-2 { grid-template-columns: 1fr 1fr; } .form-2.align-end { align-items: end; grid-template-columns: 1fr 180px auto; } }
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 .check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--blue); }
+.form-3 { display: grid; gap: 12px; }
+@media (min-width: 640px) { .form-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+code { overflow-wrap: anywhere; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--blue); text-decoration: underline; cursor: pointer; font: inherit; }
+.result-list { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
 .fieldset { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; margin: 0; display: grid; gap: 10px; }
 .fieldset legend { font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 0 6px; }
 .items-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }

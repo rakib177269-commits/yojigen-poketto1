@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation';
 import { requireStaff, can } from '../../../../../lib/server/auth.js';
 import { productOptions } from '../../../../../lib/admin/products.js';
 import { confirmOrder, rejectOrder, setStatus, updateOrder } from '../../../../../lib/admin/actions.js';
+import { refreshPathaoStatus } from '../../../../../lib/admin/courier-actions.js';
+import { pathaoConfigured } from '../../../../../lib/server/pathao.js';
+import PathaoBook from '../../../../../components/admin/PathaoBook.js';
+import PathaoHistory from '../../../../../components/admin/PathaoHistory.js';
 import ActionButton from '../../../../../components/admin/ActionButton.js';
 import ActionForm from '../../../../../components/admin/ActionForm.js';
 import ItemsEditor from '../../../../../components/admin/ItemsEditor.js';
@@ -10,7 +14,7 @@ import { StatusBadge, formatDate, formatTaka, formatBdPhone } from '../../../../
 
 export const metadata = { title: 'Order' };
 
-function CustomerCheck({ check }) {
+function CustomerCheck({ check, phone, pathao }) {
   if (!check) return null;
   const others = check.orders - 1;
   return (
@@ -33,7 +37,7 @@ function CustomerCheck({ check }) {
           </ul>
         </>
       )}
-      <p className="hint">Pathao’s delivery history for this number will appear here once Pathao is connected (phase 5).</p>
+      {pathao ? <PathaoHistory phone={phone} /> : <p className="hint">Connect Pathao (Settings) to see this number’s delivery history across all shops.</p>}
     </section>
   );
 }
@@ -52,10 +56,13 @@ export default async function OrderPage({ params, searchParams }) {
   o.events.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   const editable = can.edit(r) && ['pending', 'confirmed'].includes(o.status);
-  const [check, options] = await Promise.all([
+  const [check, options, settings] = await Promise.all([
     can.customers(r) ? staff.supabase.rpc('admin_customer_check', { p_phone: o.phone }).then((x) => x.data) : null,
     editable ? productOptions(staff.supabase) : [],
+    staff.supabase.from('store_settings').select('integrations').eq('id', 1).single().then((x) => x.data),
   ]);
+  const pathaoCfg = settings?.integrations?.pathao;
+  const pathaoReady = pathaoConfigured() && Boolean(pathaoCfg?.store_id);
   const local = formatBdPhone(o.phone);
 
   return (
@@ -78,7 +85,9 @@ export default async function OrderPage({ params, searchParams }) {
           <ActionButton action={confirmOrder.bind(null, o.id)}>Confirm order</ActionButton>
         )}
         {o.status === 'confirmed' && can.dispatch(r) && (
-          <ActionButton action={setStatus.bind(null, o.id, 'dispatched', null, null)}>Mark dispatched</ActionButton>
+          <ActionButton action={setStatus.bind(null, o.id, 'dispatched', null, null)} className={pathaoReady ? 'btn btn-ghost btn-sm' : undefined}
+            confirm={pathaoReady ? 'Mark as dispatched WITHOUT booking Pathao (e.g. another courier or hand delivery)?' : undefined}>
+            {pathaoReady ? 'Mark dispatched (other courier)' : 'Mark dispatched'}</ActionButton>
         )}
         {o.status === 'dispatched' && can.deliver(r) && (
           <>
@@ -167,7 +176,30 @@ export default async function OrderPage({ params, searchParams }) {
         </div>
 
         <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
-          <CustomerCheck check={check} />
+          <CustomerCheck check={check} phone={o.phone} pathao={pathaoConfigured()} />
+          {(o.courier_consignment_id || (o.status === 'confirmed' && can.dispatch(r))) && (
+            <section className="panel">
+              <h2>Courier</h2>
+              {o.courier_consignment_id ? (
+                <>
+                  <p style={{ margin: 0 }}>Pathao consignment <strong className="code-link">{o.courier_consignment_id}</strong>
+                    {o.courier_fee != null && <span className="hint"> · Pathao fee {formatTaka(o.courier_fee)}</span>}</p>
+                  <p style={{ margin: '4px 0' }}>Latest: <strong>{o.courier_status ?? '—'}</strong>
+                    {o.courier_updated_at && <span className="hint"> · {formatDate(o.courier_updated_at)}</span>}</p>
+                  {o.status === 'dispatched' && pathaoConfigured() && (
+                    <ActionButton action={refreshPathaoStatus.bind(null, o.id)} className="btn btn-ghost btn-sm">Ask Pathao for the latest status</ActionButton>
+                  )}
+                </>
+              ) : pathaoReady ? (
+                <PathaoBook orderId={o.id} defaultWeight={pathaoCfg.default_weight ?? 0.5} />
+              ) : (
+                <p className="hint" style={{ margin: 0 }}>
+                  Pathao isn’t connected yet{!pathaoConfigured() ? ' (API keys missing in Netlify)' : ' (choose your Pathao store)'}.
+                  {r === 'admin' ? <> Set it up in <Link href="/admin/settings">Settings</Link>.</> : ' Ask the admin.'}
+                </p>
+              )}
+            </section>
+          )}
           <section className="panel">
             <h2>Timeline</h2>
             <ol className="timeline">

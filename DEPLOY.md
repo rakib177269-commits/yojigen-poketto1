@@ -38,7 +38,6 @@ If you ever upgrade Netlify and pick Singapore for functions, move the database 
 Supabase → **Authentication → URL Configuration**:
 - Site URL: `https://yojigen-pokettobd.com`
 - Redirect URLs: add `https://yojigen-pokettobd.com/**` and `https://www.yojigen-pokettobd.com/**`
-(Change both when the domain is connected.)
 
 Then make email links work on any device. Supabase → **Authentication → Emails → Templates**. In both
 **Magic link** and **Confirm signup**, replace the link (`{{ .ConfirmationURL }}`) with:
@@ -50,6 +49,20 @@ Staff become staff on their first sign-in with an invited, verified email at `/a
 Supabase's built-in email sends only ~2 emails per hour until Resend is set up (phase 7); staff should
 set a password under "My account" after their first sign-in.
 
+### 5. Connect Pathao
+1. Pathao merchant panel → **Developer API** → enable **Merchant API Credentials**; copy the Client ID and Client Secret.
+2. Netlify → Project configuration → Environment variables → add (mark each **secret**):
+   `PATHAO_CLIENT_ID`, `PATHAO_CLIENT_SECRET`, and `PATHAO_WEBHOOK_SECRET` (any long random text you make up).
+   Only if "Test connection" later says the login is wrong: also add `PATHAO_USERNAME` / `PATHAO_PASSWORD`
+   (the merchant panel email + password). Then **Deploys → Trigger deploy**.
+3. Shop admin → **Settings → Pathao courier → Test connection**: it lists your Pathao stores. Put the store's
+   ID in "Pathao store ID" and save.
+4. Pathao merchant panel → **Developer API → Webhook**: Callback URL `https://yojigen-pokettobd.com/api/webhooks/pathao`,
+   secret = the same text as `PATHAO_WEBHOOK_SECRET`, tick all order events, save and press verify. If verification
+   fails, copy the value Pathao shows for `X-Pathao-Merchant-Webhook-Integration-Secret` into the Netlify variable
+   `PATHAO_WEBHOOK_INTEGRATION_SECRET` and redeploy.
+5. Send one real order to Pathao from its order page and watch the timeline update as it moves.
+
 ## Environment variables
 
 | Name | Public? | What it is | Set by |
@@ -59,7 +72,13 @@ set a password under "My account" after their first sign-in.
 | `NEXT_PUBLIC_SITE_URL` | yes | `https://yojigen-pokettobd.com` | done |
 | `SUPABASE_SERVICE_ROLE_KEY` | **SECRET** | Lets our server call the order functions. | **owner** (step 2) |
 
-Later phases add Pathao, Meta CAPI, GA4, TikTok, Resend and SMS keys; they will be listed here when built.
+| `PATHAO_CLIENT_ID` / `PATHAO_CLIENT_SECRET` | **SECRET** | Pathao merchant API keys | **owner** (step 5) |
+| `PATHAO_WEBHOOK_SECRET` | **SECRET** | Text Pathao sends with every status update; anything else is refused | **owner** (step 5) |
+| `PATHAO_USERNAME` / `PATHAO_PASSWORD` | **SECRET** | Only for older Pathao accounts that need the login to issue a token | owner, if needed |
+| `PATHAO_WEBHOOK_INTEGRATION_SECRET` | secret | Only if Pathao's webhook verification shows a different value | owner, if needed |
+| `PATHAO_BASE_URL` | no | Empty = live Pathao. `https://courier-api-sandbox.pathao.com` for testing | optional |
+
+Later phases add Meta CAPI, GA4, TikTok, Resend and SMS keys; they will be listed here when built.
 
 ## Deploy checks
 `netlify.toml` runs, in order: unit tests → database self-tests → `next build` → smoke test of every page.

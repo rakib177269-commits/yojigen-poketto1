@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { requireStaff, can } from '../../../../lib/server/auth.js';
 import { StatusBadge, STATUS_LABEL, formatDate, formatTaka, formatBdPhone } from '../../../../components/admin/ui.js';
 import { normalizeBdPhone } from '../../../../lib/phone.js';
+import { pathaoConfigured } from '../../../../lib/server/pathao.js';
+import PathaoBulk from '../../../../components/admin/PathaoBulk.js';
 
 export const metadata = { title: 'Orders' };
 const PAGE = 50;
@@ -15,7 +17,7 @@ export default async function OrdersPage({ searchParams }) {
   const tabs = staff.role === 'packer' ? ['confirmed', 'dispatched'] : Object.keys(STATUS_LABEL);
 
   let query = staff.supabase.from('orders')
-    .select('id, code, created_at, status, source, name, phone, total, zone_code, marketing_status', { count: 'exact' })
+    .select('id, code, created_at, status, source, name, phone, total, zone_code, marketing_status, courier_status', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(page * PAGE, page * PAGE + PAGE - 1);
   if (status) query = query.eq('status', status);
@@ -28,6 +30,7 @@ export default async function OrdersPage({ searchParams }) {
   const { data: orders, count, error } = await query;
   if (error) throw new Error(error.message);
 
+  const bulk = status === 'confirmed' && can.dispatch(staff.role) && pathaoConfigured() && orders.length > 0;
   const href = (p) => `/admin/orders?${new URLSearchParams({ ...(status && { status }), ...(q && { q }), ...p })}`;
 
   return (
@@ -58,20 +61,23 @@ export default async function OrdersPage({ searchParams }) {
         <button className="btn btn-ghost btn-sm">Search</button>
       </form>
 
+      {bulk && <PathaoBulk formId="pathao-bulk" codes={Object.fromEntries(orders.map((o) => [o.id, o.code]))} />}
       {orders.length === 0 ? <p className="empty">No orders here yet.</p> : (
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Order</th><th>Date</th><th>Customer</th><th>Total</th><th>Status</th></tr>
+              <tr>{bulk && <th><span className="sr-only">Select</span></th>}<th>Order</th><th>Date</th><th>Customer</th><th>Total</th><th>Status</th></tr>
             </thead>
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id}>
+                  {bulk && <td><input type="checkbox" name="ids" value={o.id} form="pathao-bulk" aria-label={`Select ${o.code}`} className="check-box" /></td>}
                   <td><Link href={`/admin/orders/${o.id}`} className="code-link">{o.code}</Link>{o.source === 'manual' && <span className="hint"> · manual</span>}</td>
                   <td className="nowrap">{formatDate(o.created_at)}</td>
                   <td>{o.name}<div className="hint">{formatBdPhone(o.phone)}</div></td>
                   <td className="nowrap">{formatTaka(o.total)}</td>
-                  <td><StatusBadge status={o.status} />{o.marketing_status === 'rejected' && <div className="hint">rejected</div>}</td>
+                  <td><StatusBadge status={o.status} />{o.marketing_status === 'rejected' && <div className="hint">rejected</div>}
+                    {o.status === 'dispatched' && o.courier_status && <div className="hint">{o.courier_status}</div>}</td>
                 </tr>
               ))}
             </tbody>

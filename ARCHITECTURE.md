@@ -67,10 +67,22 @@ only a convenience. A pending invite becomes a staff row the first time that *ve
 Packers only ever see confirmed/dispatched orders. `admin_set_status` can never set `confirmed`; that is only
 `admin_confirm_order`, which also sets `marketing_status = confirmed` for the phase 6 Purchase sweep.
 
+**Courier (Pathao).** `lib/server/pathao.js` talks to Pathao with secrets from the environment; its
+access token is cached in the database (`private.courier_tokens`) so all serverless functions share it.
+Booking: `admin_courier_claim` (role check, order must be confirmed, 2-minute lock against double clicks)
+→ Pathao create-order → `admin_courier_booked` (consignment saved, order → dispatched) or
+`admin_courier_release` (lock freed, internal note with Pathao's reason). Pathao's webhook
+(`/api/webhooks/pathao`, header `X-PATHAO-Signature` must equal `PATHAO_WEBHOOK_SECRET`) feeds
+`courier_webhook`: each payload is stored once (hash), progress becomes order events (customer-facing ones
+show on the tracking page), `delivered` and `returned` change the order status (returned restocks), and an
+event can never move an order backwards. The Pathao customer history (all merchants) is fetched on demand
+and cached for a day.
+
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
 safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
-`run_catalog_self_tests()` 13 catalogue checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
+`run_catalog_self_tests()` 13 catalogue checks and `run_courier_self_tests()` 13 Pathao booking/webhook
+checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
 
 ## Status by phase
 
@@ -80,7 +92,7 @@ safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
 | 2. Storefront, checkout, COD orders | Live; full order journey verified on the live site at 375px |
 | 3. Admin panel, staff roles, audit | Done: dashboard, orders (confirm / reject / status / edit / manual / invoice / CSV), customer check, abandoned carts, team, settings + maintenance mode, audit log. Browser-tested at 375px with temporary admin + packer accounts |
 | 4. Image upload, catalogue management | Built. Products, colours, categories, coupons, bulk edit and spreadsheet import browser-tested at 375px and desktop against the real database. Live photo upload and delete buttons are tested once migration 0013 is applied |
-| 5. Pathao | Not started |
+| 5. Pathao | Built and tested without live Pathao keys: booking (single + bulk), retry after failure, manual city/zone fallback, webhook (verify, signature, duplicates, delivered/returned), status refresh, customer history. First real booking waits for the owner's Pathao keys |
 | 6. Meta Pixel + CAPI, GA4, TikTok | Not started; `lib/track.js` is a no-op until then, and fbp/fbc/landing URL are already stored on orders |
 | 7. Emails, SMS OTP, accounts | Not started |
 | 8. Backups, SEO polish, launch | Not started |
@@ -91,7 +103,10 @@ safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
   order. Delete it from the Supabase dashboard once you're happy with the Ohio one.
 - **Staff sign-in by email link** depends on Supabase's built-in email sender (a few emails per hour) until
   Resend is set up in phase 7. The link must be opened in the same browser that requested it.
-- **Customer check** uses only our own order history; Pathao's data arrives with phase 5.
+- **Pathao API details** were taken from Pathao's published API as used by open-source integrations;
+  Pathao's own docs site is blocked from the build machine. The first real booking is the final check
+  (store ID, phone format, webhook verification value). Pathao's customer-history answer format is read
+  defensively; if it changes, the order page says "no usable history" rather than guessing.
 - **Temporary test accounts** `claude-test-admin@selftest.local` and `claude-test-packer@selftest.local`
   are disabled and locked; delete them in Supabase → Authentication → Users. Five cancelled test orders
   (names starting "TEST") remain for the record.
