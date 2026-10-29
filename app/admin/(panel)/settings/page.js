@@ -4,6 +4,8 @@ import { saveCourierSettings } from '../../../../lib/admin/courier-actions.js';
 import { pathaoEnvStatus } from '../../../../lib/server/pathao.js';
 import { tokenStatus } from '../../../../lib/server/marketing.js';
 import { saveTrackingSettings } from '../../../../lib/admin/marketing-actions.js';
+import { saveNotificationSettings, sendTestEmail, sendTestSms } from '../../../../lib/admin/notify-actions.js';
+import { notifyStatus } from '../../../../lib/server/notify.js';
 import { SITE } from '../../../../lib/site.js';
 import PathaoTest from '../../../../components/admin/PathaoTest.js';
 import ActionForm from '../../../../components/admin/ActionForm.js';
@@ -36,6 +38,7 @@ export default async function SettingsPage() {
 
       <PathaoSettings cfg={settings.integrations?.pathao ?? {}} />
       <MarketingSettings ids={settings.integrations?.tracking ?? {}} />
+      <MessageSettings cfg={settings.integrations?.notifications ?? null} />
 
       <section className="panel" style={{ marginTop: 16 }}>
         <h2>Delivery zones</h2>
@@ -117,6 +120,51 @@ function MarketingSettings({ ids }) {
         Without them the browser tags still work, but purchases can’t be reported.
         {t.metaTest && <strong> Meta TEST mode is on (META_TEST_EVENT_CODE): events go to Test Events only. Remove it when done.</strong>}
       </p>
+    </section>
+  );
+}
+
+const EVENTS = [['placed', 'Order received'], ['confirmed', 'Confirmed'], ['dispatched', 'Sent with courier'],
+  ['delivered', 'Delivered'], ['cancelled', 'Cancelled (not for rejected/fake orders)']];
+// Same defaults as the database (private.notify_wanted) when nothing is saved yet.
+const DEFAULTS = { sms: ['confirmed', 'dispatched'], email: ['placed', 'confirmed', 'dispatched', 'delivered', 'cancelled'] };
+
+function MessageSettings({ cfg }) {
+  const st = notifyStatus();
+  const on = (channel, k) => (cfg?.[channel]?.[k] ?? DEFAULTS[channel].includes(k));
+  return (
+    <section className="panel form-grid" style={{ marginTop: 16 }}>
+      <h2>Customer messages (SMS &amp; email)</h2>
+      <p className="hint" style={{ margin: 0 }}>
+        SMS provider <Mark ok={st.sms} />{st.smsProvider ? ` (${st.smsProvider})` : ''}, email sender <Mark ok={st.email} />.
+        Messages are sent right away and retried for a while if a provider is down. Without a provider, messages are skipped (never sent late).
+      </p>
+      <ActionForm action={saveNotificationSettings} submitLabel="Save message settings">
+        <table className="table">
+          <thead><tr><th>When</th><th>SMS (costs per message)</th><th>Email (if the customer gave one)</th></tr></thead>
+          <tbody>
+            {EVENTS.map(([k, label]) => (
+              <tr key={k}><td>{label}</td>
+                <td><input type="checkbox" name={`sms_${k}`} defaultChecked={on('sms', k)} aria-label={`SMS: ${label}`} className="check-box" /></td>
+                <td><input type="checkbox" name={`email_${k}`} defaultChecked={on('email', k)} aria-label={`Email: ${label}`} className="check-box" /></td></tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="field" style={{ maxWidth: 360 }}><label htmlFor="ms-staff">Email me every new order at</label>
+          <input id="ms-staff" name="staff_email" type="email" className="input" defaultValue={cfg?.staff_email ?? ''} placeholder="you@example.com" /></div>
+      </ActionForm>
+      <div className="form-2">
+        {st.sms && (
+          <ActionForm action={sendTestSms} submitLabel="Send test SMS" submitClass="btn btn-ghost btn-sm">
+            <div className="field"><label htmlFor="ts-phone">Test SMS to</label><input id="ts-phone" name="phone" className="input" inputMode="tel" placeholder="01XXXXXXXXX" /></div>
+          </ActionForm>
+        )}
+        {st.email && (
+          <ActionForm action={sendTestEmail} submitLabel="Send test email" submitClass="btn btn-ghost btn-sm">
+            <div className="field"><label htmlFor="ts-email">Test email to</label><input id="ts-email" name="email" type="email" className="input" /></div>
+          </ActionForm>
+        )}
+      </div>
     </section>
   );
 }

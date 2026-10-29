@@ -1,6 +1,6 @@
 import { formatDate, formatTaka } from '../lib/format.js';
 
-const STATUS_TEXT = {
+export const STATUS_TEXT = {
   pending: 'Order received — we will call you to confirm',
   confirmed: 'Confirmed — being packed',
   dispatched: 'On the way',

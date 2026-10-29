@@ -128,9 +128,11 @@ p { margin: 0 0 1em; }
 @media (max-width: 380px) { .header-inner .icon-btn { width: 40px; } }
 @media (min-width: 768px) { .wordmark-main { font-size: 26px; letter-spacing: .2em; } }
 .desktop-nav { display: none; }
+.icon-btn.desktop-only { display: none; }
 @media (min-width: 960px) {
   .header-inner { grid-template-columns: auto 1fr auto; gap: 24px; }
   .header-left { display: none; }
+  .icon-btn.desktop-only { display: inline-flex; }
   .desktop-nav { display: flex; gap: 26px; justify-content: center; font-size: 14px; font-weight: 500; }
   .desktop-nav a { padding: 6px 0; border-bottom: 2px solid transparent; }
   .desktop-nav a:hover { border-color: var(--blue); }
@@ -486,3 +488,8 @@ details > summary { cursor: pointer; }
 .richtext-area { min-height: 160px; overflow-wrap: anywhere; }
 .richtext-area:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
 .sticky-save { position: sticky; bottom: 0; z-index: 5; background: var(--surface); padding: 12px 0; border-top: 1px solid var(--line); }
+
+/* ---------------------------------------------------------------- account */
+.account-orders { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.account-orders li { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--line); }
+.account-orders li:first-child { border-top: 0; padding-top: 0; }

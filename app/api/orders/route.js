@@ -2,7 +2,10 @@
 // database decides every price, the delivery fee, the discount and the total.
 import { callRpc, cleanItems, clientIp, fail, json, readJson, sameOrigin } from '../../../lib/server/request.js';
 import { errorMessage } from '../../../lib/errors.js';
+import { after } from 'next/server';
 import { getSettings } from '../../../lib/server/catalog.js';
+import { supabaseService } from '../../../lib/server/supabase.js';
+import { kickOutbox } from '../../../lib/server/notify.js';
 
 const str = (v, max) => (v == null ? null : String(v).slice(0, max));
 
@@ -40,7 +43,14 @@ export async function POST(request) {
     p_client_key: ip,
   });
 
-  if (result.ok) return json({ ok: true, code: result.code, total: result.total });
+  if (result.ok) {
+    // "Order received" SMS/email, sent after the response so checkout stays fast.
+    after(async () => {
+      const { data } = await supabaseService().from('orders').select('id').eq('code', result.code).maybeSingle();
+      if (data) await kickOutbox(data.id);
+    });
+    return json({ ok: true, code: result.code, total: result.total });
+  }
   const status = result.error === 'rate_limited' ? 429 : result.error === 'server_error' ? 500 : 400;
   return json({ ok: false, error: result.error, message: errorMessage(result.error), quote: result.quote }, status);
 }

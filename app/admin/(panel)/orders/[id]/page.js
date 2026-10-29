@@ -13,6 +13,8 @@ import ItemsEditor from '../../../../../components/admin/ItemsEditor.js';
 import { StatusBadge, formatDate, formatTaka, formatBdPhone } from '../../../../../components/admin/ui.js';
 
 export const metadata = { title: 'Order' };
+const MESSAGE_KIND = { placed: 'order received', confirmed: 'confirmed', dispatched: 'on its way', delivered: 'delivered',
+  cancelled: 'cancelled', staff_new_order: 'new-order email to you' };
 
 function CustomerCheck({ check, phone, pathao }) {
   if (!check) return null;
@@ -56,10 +58,11 @@ export default async function OrderPage({ params, searchParams }) {
   o.events.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   const editable = can.edit(r) && ['pending', 'confirmed'].includes(o.status);
-  const [check, options, settings] = await Promise.all([
+  const [check, options, settings, messages] = await Promise.all([
     can.customers(r) ? staff.supabase.rpc('admin_customer_check', { p_phone: o.phone }).then((x) => x.data) : null,
     editable ? productOptions(staff.supabase) : [],
     staff.supabase.from('store_settings').select('integrations').eq('id', 1).single().then((x) => x.data),
+    can.customers(r) ? staff.supabase.rpc('admin_order_notifications', { p_order_id: o.id }).then((x) => x.data ?? []) : [],
   ]);
   const pathaoCfg = settings?.integrations?.pathao;
   const pathaoReady = pathaoConfigured() && Boolean(pathaoCfg?.store_id);
@@ -213,6 +216,19 @@ export default async function OrderPage({ params, searchParams }) {
               ))}
             </ol>
           </section>
+          {messages.length > 0 && (
+            <section className="panel">
+              <h2>Messages to customer</h2>
+              <ul className="plain-list">
+                {messages.map((m, i) => (
+                  <li key={i}>{m.channel === 'sms' ? 'SMS' : 'Email'} · {MESSAGE_KIND[m.kind] ?? m.kind} ·{' '}
+                    <strong className={m.status === 'sent' ? 'ok-text' : m.status === 'failed' ? 'error-text' : ''}>{m.status}</strong>
+                    {m.sent_at && <span className="hint"> {formatDate(m.sent_at)}</span>}
+                    {m.status !== 'sent' && m.last_error && <span className="hint"> ({m.last_error})</span>}</li>
+                ))}
+              </ul>
+            </section>
+          )}
           {can.audit(r) && (
             <section className="panel">
               <h2>Marketing</h2>

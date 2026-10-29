@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 import { useStore } from './StoreProvider.js';
-import { BagIcon, CloseIcon, HeartIcon, MenuIcon, SearchIcon } from './Icons.js';
+import { BagIcon, CloseIcon, HeartIcon, MenuIcon, SearchIcon, UserIcon } from './Icons.js';
 
 function Wordmark() {
   return (
@@ -34,6 +34,7 @@ export default function HeaderClient({ categories }) {
         </nav>
         <div className="header-right">
           <Link href="/shop#search" className="icon-btn" aria-label="Search products"><SearchIcon /></Link>
+          <Link href="/account" className="icon-btn desktop-only" aria-label="My account"><UserIcon /></Link>
           <Link href="/wishlist" className="icon-btn" aria-label={`Wishlist (${ready ? wishlist.length : 0} items)`}>
             <HeartIcon />
             {ready && wishlist.length > 0 && <span className="badge-count" aria-hidden="true">{wishlist.length}</span>}
@@ -55,6 +56,7 @@ export default function HeaderClient({ categories }) {
             <Link href="/shop">Shop all</Link>
             {categories.map((c) => <Link key={c.slug} href={`/shop/${c.slug}`}>{c.name}</Link>)}
             <Link href="/wishlist">Wishlist</Link>
+            <Link href="/account">My account</Link>
             <Link href="/track">Track your order</Link>
             <Link href="/shipping">Delivery &amp; fees</Link>
             <Link href="/about">About us</Link>

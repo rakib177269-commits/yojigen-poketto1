@@ -17,10 +17,10 @@ async function post(url, body) {
   return res.json().catch(() => ({ ok: false, error: 'server_error' }));
 }
 
-export default function CheckoutForm() {
+export default function CheckoutForm({ initial = null }) {
   const router = useRouter();
   const { cart, ready, clearCart, cartSubtotal } = useStore();
-  const [form, setForm] = useState({ name: '', phone: '', address: '', note: '', email: '' });
+  const [form, setForm] = useState({ name: '', phone: '', address: '', note: '', email: '', ...(initial ?? {}) });
   const [touched, setTouched] = useState({});
   const [couponInput, setCouponInput] = useState('');
   const [coupon, setCoupon] = useState('');

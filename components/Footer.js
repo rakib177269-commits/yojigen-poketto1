@@ -31,6 +31,7 @@ export default function Footer({ categories }) {
           <h2>Help</h2>
           <ul>
             <li><Link href="/track">Track your order</Link></li>
+            <li><Link href="/account">My account</Link></li>
             <li><Link href="/shipping">Delivery &amp; fees</Link></li>
             <li><Link href="/returns">Returns</Link></li>
             <li><Link href="/about">About us</Link></li>
