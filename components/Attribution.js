@@ -39,10 +39,14 @@ export function readAttribution() {
   let stored = null;
   try { stored = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { /* ignore */ }
   const fbc = cookie('_fbc') || (stored?.fbclid ? `fb.1.${stored.fbclid_ts || Date.now()}.${stored.fbclid}` : null);
+  // GA4 client id is the last two parts of the _ga cookie (GA1.1.<id>.<time>).
+  const ga = cookie('_ga')?.split('.').slice(-2).join('.') || null;
   return {
     fbp: cookie('_fbp'),
     fbc,
     landing_url: stored?.landing_url ?? null,
     utm: stored?.utm ?? null,
+    // Kept with the order so the server can report the purchase to Google later.
+    ids: { _ga: ga },
   };
 }

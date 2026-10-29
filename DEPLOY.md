@@ -63,6 +63,18 @@ set a password under "My account" after their first sign-in.
    `PATHAO_WEBHOOK_INTEGRATION_SECRET` and redeploy.
 5. Send one real order to Pathao from its order page and watch the timeline update as it moves.
 
+### 6. Facebook and Google tracking
+1. Shop admin → **Settings → Marketing**: paste the **Meta Pixel ID** (Events Manager → Data sources) and the
+   **GA4 Measurement ID** (`G-…`, GA4 Admin → Data streams). The tags start on shop pages within a minute.
+2. Netlify → Environment variables (mark secret, then redeploy):
+   - `META_CAPI_TOKEN`: Events Manager → your Pixel → Settings → Conversions API → **Generate access token**.
+   - `GA4_API_SECRET`: GA4 Admin → Data streams → your stream → **Measurement Protocol API secrets** → Create.
+3. Check Facebook: Events Manager → **Test events** → copy the test code → set `META_TEST_EVENT_CODE` in Netlify,
+   redeploy, browse the shop and confirm one order in admin. Within 10 minutes PageView / ViewContent / AddToCart /
+   InitiateCheckout (browser + server, deduplicated) and the confirmed order's Purchase show up. Then **delete
+   `META_TEST_EVENT_CODE`** and redeploy. Check Google in GA4 → Admin → **DebugView** / Realtime.
+4. Verify the domain in Meta Business Settings → Brand safety → Domains (`yojigen-pokettobd.com`).
+
 ## Environment variables
 
 | Name | Public? | What it is | Set by |
@@ -78,7 +90,12 @@ set a password under "My account" after their first sign-in.
 | `PATHAO_WEBHOOK_INTEGRATION_SECRET` | secret | Only if Pathao's webhook verification shows a different value | owner, if needed |
 | `PATHAO_BASE_URL` | no | Empty = live Pathao. `https://courier-api-sandbox.pathao.com` for testing | optional |
 
-Later phases add Meta CAPI, GA4, TikTok, Resend and SMS keys; they will be listed here when built.
+| `META_CAPI_TOKEN` | **SECRET** | Meta Conversions API token (server copies of browser events + Purchase) | **owner** (step 6) |
+| `META_TEST_EVENT_CODE` | no | Only while testing in Events Manager → Test events; delete afterwards | optional |
+| `META_GRAPH_VERSION` | no | Graph API version, default `v23.0` | optional |
+| `GA4_API_SECRET` | **SECRET** | GA4 Measurement Protocol secret (server-side purchase) | **owner** (step 6) |
+
+Later phases add Resend and SMS keys; they will be listed here when built.
 
 ## Deploy checks
 `netlify.toml` runs, in order: unit tests → database self-tests → `next build` → smoke test of every page.
@@ -98,7 +115,7 @@ no longer used. If the domain ever changes:
 2. Change `NEXT_PUBLIC_SITE_URL` in Netlify and redeploy.
 3. Add a migration updating `private.app_config.site_url` (background jobs call the site there).
 4. Supabase → Authentication → URL Configuration: Site URL + Redirect URLs (see step 4 above).
-5. Pathao webhook URL (phase 5) and, later, Meta/Google/TikTok domain settings.
+5. Pathao webhook URL (phase 5) and, later, Meta/Google domain settings.
 6. Email (Resend) needs SPF/DKIM DNS records on the domain; that step comes in phase 7.
 
 ## Before launch (checklist, kept up to date)

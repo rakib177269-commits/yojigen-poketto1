@@ -2,6 +2,8 @@ import { requireStaff } from '../../../../lib/server/auth.js';
 import { updateSettings, updateZone } from '../../../../lib/admin/actions.js';
 import { saveCourierSettings } from '../../../../lib/admin/courier-actions.js';
 import { pathaoEnvStatus } from '../../../../lib/server/pathao.js';
+import { tokenStatus } from '../../../../lib/server/marketing.js';
+import { saveTrackingSettings } from '../../../../lib/admin/marketing-actions.js';
 import { SITE } from '../../../../lib/site.js';
 import PathaoTest from '../../../../components/admin/PathaoTest.js';
 import ActionForm from '../../../../components/admin/ActionForm.js';
@@ -33,6 +35,7 @@ export default async function SettingsPage() {
       </section>
 
       <PathaoSettings cfg={settings.integrations?.pathao ?? {}} />
+      <MarketingSettings ids={settings.integrations?.tracking ?? {}} />
 
       <section className="panel" style={{ marginTop: 16 }}>
         <h2>Delivery zones</h2>
@@ -88,6 +91,32 @@ function PathaoSettings({ cfg }) {
         </ol>
         <p className="hint">Pickups, “out for delivery”, delivered and returned then update orders by themselves, and customers see the progress on the tracking page.</p>
       </details>
+    </section>
+  );
+}
+
+function MarketingSettings({ ids }) {
+  const t = tokenStatus();
+  return (
+    <section className="panel form-grid" style={{ marginTop: 16 }}>
+      <h2>Marketing (Facebook &amp; Google)</h2>
+      <p className="hint" style={{ margin: 0 }}>
+        Tags load on shop pages only, never in admin. Purchases are reported by our server only after you confirm an order,
+        so fake and rejected orders never reach your ad accounts.
+      </p>
+      <ActionForm action={saveTrackingSettings} submitLabel="Save marketing ids">
+        <div className="form-2">
+          <div className="field"><label htmlFor="mk-meta">Meta Pixel ID</label>
+            <input id="mk-meta" name="meta_pixel_id" className="input" inputMode="numeric" defaultValue={ids.meta_pixel_id ?? ''} placeholder="e.g. 123456789012345" /></div>
+          <div className="field"><label htmlFor="mk-ga4">Google Analytics 4 Measurement ID</label>
+            <input id="mk-ga4" name="ga4_id" className="input" defaultValue={ids.ga4_id ?? ''} placeholder="G-XXXXXXXXXX" /></div>
+        </div>
+      </ActionForm>
+      <p className="hint" style={{ margin: 0 }}>
+        Server keys in Netlify: Meta Conversions API token <Mark ok={t.meta} />, GA4 API secret <Mark ok={t.ga4} />.
+        Without them the browser tags still work, but purchases can’t be reported.
+        {t.metaTest && <strong> Meta TEST mode is on (META_TEST_EVENT_CODE): events go to Test Events only. Remove it when done.</strong>}
+      </p>
     </section>
   );
 }

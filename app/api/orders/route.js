@@ -12,9 +12,14 @@ export async function POST(request) {
   if (!body) return fail('invalid_items');
   if ((await getSettings())?.maintenance_mode) return fail('maintenance', 503);
   const ip = clientIp(request);
-  const utm = body.utm && typeof body.utm === 'object' && !Array.isArray(body.utm)
-    ? Object.fromEntries(Object.entries(body.utm).slice(0, 5).map(([k, v]) => [str(k, 30), str(v, 100)]))
-    : null;
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  // UTM tags plus the Google Analytics visitor id (_ga), used for the
+  // server-side purchase report after confirmation.
+  const tags = {
+    ...Object.fromEntries(Object.entries(obj(body.utm)).slice(0, 5).map(([k, v]) => [str(k, 30), str(v, 100)])),
+    ...Object.fromEntries(['_ga'].filter((k) => obj(body.ids)[k]).map((k) => [k, str(obj(body.ids)[k], 80)])),
+  };
+  const utm = Object.keys(tags).length ? tags : null;
 
   const result = await callRpc('place_order', {
     p_order: {

@@ -78,11 +78,23 @@ show on the tracking page), `delivered` and `returned` change the order status (
 event can never move an order backwards. The Pathao customer history (all merchants) is fetched on demand
 and cached for a day.
 
+**Marketing (Meta + GA4).** Tracking ids live in Settings (public); tokens in Netlify. `components/Pixels.js`
+renders one nonced inline loader on shop pages only (admin never gets tags) and defines `window.__ypTrack`,
+which `lib/track.js` calls: Meta Pixel + GA4 events in the browser, and for Meta a server copy through
+`/api/capi` with the same event id (Meta deduplicates; ad blockers can't drop it). `/api/capi` only accepts
+PageView, ViewContent, AddToCart, InitiateCheckout, Search, AddToWishlist; it refuses Purchase, is rate
+limited and same-origin. **Purchase** is sent only by `/api/sweep/marketing` (pg_cron every 10 minutes) for
+orders with `marketing_status = confirmed`, claimed in the database so overlapping runs can't double-send,
+with event id `purchase-<order code>`, hashed phone/email/name, fbp/fbc, IP and user agent from checkout,
+and the GA4 client id from the `_ga` cookie (kept in the order's `utm`). Per-vendor results are recorded
+(`capi_sent_at`, `marketing_sent`, `capi_last_error`, max 5 attempts) and shown on the order page.
+TikTok was dropped at the owner's request (the database still accepts a TikTok id but nothing uses it).
+
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
 safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
 `run_catalog_self_tests()` 13 catalogue checks and `run_courier_self_tests()` 13 Pathao booking/webhook
-checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
+checks and `run_marketing_self_tests()` 7 Purchase-reporting checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
 
 ## Status by phase
 
@@ -93,7 +105,7 @@ checks the same way. Unit tests cover the JS side. A smoke test renders every pa
 | 3. Admin panel, staff roles, audit | Done: dashboard, orders (confirm / reject / status / edit / manual / invoice / CSV), customer check, abandoned carts, team, settings + maintenance mode, audit log. Browser-tested at 375px with temporary admin + packer accounts |
 | 4. Image upload, catalogue management | Built. Products, colours, categories, coupons, bulk edit and spreadsheet import browser-tested at 375px and desktop against the real database. Live photo upload and delete buttons are tested once migration 0013 is applied |
 | 5. Pathao | Built and tested without live Pathao keys: booking (single + bulk), retry after failure, manual city/zone fallback, webhook (verify, signature, duplicates, delivered/returned), status refresh, customer history. First real booking waits for the owner's Pathao keys |
-| 6. Meta Pixel + CAPI, GA4, TikTok | Not started; `lib/track.js` is a no-op until then, and fbp/fbc/landing URL are already stored on orders |
+| 6. Meta Pixel + CAPI, GA4 | Built: tags on shop pages only, server mirror, Purchase after confirmation only. Browser-tested with dummy ids (no CSP violations, Purchase refused in browser and at /api/capi, nothing on admin). Real check in Meta Test Events / GA4 DebugView waits for the owner's ids and tokens. TikTok dropped |
 | 7. Emails, SMS OTP, accounts | Not started |
 | 8. Backups, SEO polish, launch | Not started |
 

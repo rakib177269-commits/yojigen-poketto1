@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       </ul>
       <h2>Advertising and analytics</h2>
       <p>
-        We may use the Meta (Facebook) Pixel, Google Analytics and TikTok Pixel to measure our ads.
+        We may use the Meta (Facebook) Pixel and Google Analytics to measure our ads.
         When an order is confirmed we may share a hashed (scrambled) version of your phone, email,
         name and city with these services so they can match the purchase to an ad. They never
         receive your address.

@@ -217,9 +217,14 @@ export default async function OrderPage({ params, searchParams }) {
             <section className="panel">
               <h2>Marketing</h2>
               <p className="hint" style={{ margin: 0 }}>
-                Status: {o.marketing_status}. Facebook click id {o.fbc ? 'captured' : 'not present'}, browser id {o.fbp ? 'captured' : 'not present'}.
-                Purchase events are sent only after confirmation (phase 6).
+                {o.marketing_status === 'rejected' ? 'Rejected: this order is never reported as a sale.'
+                  : o.marketing_status === 'pending' ? 'Reported as a sale to Facebook / Google only after it is confirmed.'
+                    : <>Purchase report: Facebook {o.capi_sent_at ? `sent ${formatDate(o.capi_sent_at)}` : 'not sent yet'}
+                      {' · '}Google {o.marketing_sent?.ga4 ? `sent ${formatDate(o.marketing_sent.ga4)}` : 'not sent yet'}
+                      {o.capi_attempts > 0 && !o.capi_sent_at && ` · ${o.capi_attempts} attempt(s)`}.</>}
+                {' '}Facebook click id {o.fbc ? 'captured' : 'not present'}, browser id {o.fbp ? 'captured' : 'not present'}.
               </p>
+              {o.capi_last_error && <p className="error-text" style={{ margin: '6px 0 0' }}>Last error: {o.capi_last_error}</p>}
             </section>
           )}
         </div>

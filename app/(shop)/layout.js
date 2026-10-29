@@ -3,6 +3,7 @@ import HeaderClient from '../../components/HeaderClient.js';
 import CartDrawer from '../../components/CartDrawer.js';
 import Footer from '../../components/Footer.js';
 import Attribution from '../../components/Attribution.js';
+import Pixels from '../../components/Pixels.js';
 import { getCategories, getSettings } from '../../lib/server/catalog.js';
 import { formatTaka } from '../../lib/format.js';
 import { getStaff } from '../../lib/server/auth.js';
@@ -37,6 +38,7 @@ export default async function ShopLayout({ children }) {
       <Footer categories={categories} />
       <CartDrawer freeShippingThreshold={threshold} />
       <Attribution />
+      <Pixels tracking={settings?.integrations?.tracking} />
     </StoreProvider>
   );
 }

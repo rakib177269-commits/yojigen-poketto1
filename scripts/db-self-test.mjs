@@ -1,4 +1,4 @@
-// Runs the database self-tests (migrations 0005/0006, 0011, 0014 and 0017) via
+// Runs the database self-tests (migrations 0005/0006, 0011, 0014, 0017 and 0019) via
 // the service role. Every check runs in a rolled-back transaction, so this is
 // safe against production. Exits non-zero on any failure, which stops a deploy.
 import { createClient } from '@supabase/supabase-js';
@@ -18,7 +18,7 @@ if (!key) {
 
 const db = createClient(url, key, { auth: { persistSession: false } });
 let failed = 0;
-for (const suite of ['run_self_tests', 'run_admin_self_tests', 'run_catalog_self_tests', 'run_courier_self_tests']) {
+for (const suite of ['run_self_tests', 'run_admin_self_tests', 'run_catalog_self_tests', 'run_courier_self_tests', 'run_marketing_self_tests']) {
   const { data, error } = await db.rpc(suite);
   if (error) {
     console.error(`db self-test: could not run ${suite}:`, error.message);
