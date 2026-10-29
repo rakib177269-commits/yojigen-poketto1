@@ -1,11 +1,12 @@
 // Next.js 16 renamed middleware.js to proxy.js (same feature, Node runtime).
 // Runs before every page: sets a per-request CSP nonce and noindex headers.
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { buildCsp } from './lib/csp.js';
 
 const NOINDEX = /^\/(admin|checkout|order|account|track|wishlist|unsubscribe)(\/|$)/;
 
-export function proxy(request) {
+export async function proxy(request) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const csp = buildCsp({
     nonce,
@@ -18,7 +19,25 @@ export function proxy(request) {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', csp);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Staff pages: refresh the Supabase session cookie before rendering (Server
+  // Components can read cookies but not write them).
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (list) => {
+          list.forEach(({ name, value }) => request.cookies.set(name, value));
+          requestHeaders.set('cookie', request.cookies.toString());
+          response = NextResponse.next({ request: { headers: requestHeaders } });
+          list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    });
+    await supabase.auth.getUser();
+  }
+
   response.headers.set('Content-Security-Policy', csp);
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

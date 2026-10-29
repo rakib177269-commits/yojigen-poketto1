@@ -1,4 +1,4 @@
-// Runs the database self-tests (supabase/migrations/0005_self_tests.sql) via
+// Runs the database self-tests (migrations 0005/0006 and 0011) via
 // the service role. Every check runs in a rolled-back transaction, so this is
 // safe against production. Exits non-zero on any failure, which stops a deploy.
 import { createClient } from '@supabase/supabase-js';
@@ -16,11 +16,17 @@ if (!key) {
   process.exit(0);
 }
 
-const { data, error } = await createClient(url, key, { auth: { persistSession: false } }).rpc('run_self_tests');
-if (error) {
-  console.error('db self-test: could not run:', error.message);
-  process.exit(1);
+const db = createClient(url, key, { auth: { persistSession: false } });
+let failed = 0;
+for (const suite of ['run_self_tests', 'run_admin_self_tests']) {
+  const { data, error } = await db.rpc(suite);
+  if (error) {
+    console.error(`db self-test: could not run ${suite}:`, error.message);
+    process.exit(1);
+  }
+  console.log(`\n${suite}`);
+  for (const r of data.results) console.log(`${r.pass ? 'ok  ' : 'FAIL'} ${r.name}`);
+  console.log(`${data.passed} passed, ${data.failed} failed`);
+  failed += data.failed;
 }
-for (const r of data.results) console.log(`${r.pass ? 'ok  ' : 'FAIL'} ${r.name}`);
-console.log(`\n${data.passed} passed, ${data.failed} failed`);
-process.exit(data.failed === 0 ? 0 : 1);
+process.exit(failed === 0 ? 0 : 1);

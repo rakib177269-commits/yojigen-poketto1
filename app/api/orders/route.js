@@ -2,6 +2,7 @@
 // database decides every price, the delivery fee, the discount and the total.
 import { callRpc, cleanItems, clientIp, fail, json, readJson, sameOrigin } from '../../../lib/server/request.js';
 import { errorMessage } from '../../../lib/errors.js';
+import { getSettings } from '../../../lib/server/catalog.js';
 
 const str = (v, max) => (v == null ? null : String(v).slice(0, max));
 
@@ -9,6 +10,7 @@ export async function POST(request) {
   if (!sameOrigin(request)) return fail('server_error', 403);
   const body = await readJson(request);
   if (!body) return fail('invalid_items');
+  if ((await getSettings())?.maintenance_mode) return fail('maintenance', 503);
   const ip = clientIp(request);
   const utm = body.utm && typeof body.utm === 'object' && !Array.isArray(body.utm)
     ? Object.fromEntries(Object.entries(body.utm).slice(0, 5).map(([k, v]) => [str(k, 30), str(v, 100)]))

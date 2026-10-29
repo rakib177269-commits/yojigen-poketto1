@@ -34,6 +34,13 @@ site through Netlify's nearby CDN; only the server-to-database hop is in Ohio, a
 (Measured after the move: checkout price check 0.5–1.2s → 0.25s, placing an order 1.9s → 0.47s.)
 If you ever upgrade Netlify and pick Singapore for functions, move the database to Singapore too.
 
+### 4. Staff sign-in links (Supabase Auth)
+Supabase → **Authentication → URL Configuration**:
+- Site URL: `https://yojigen-poketto.netlify.app`
+- Redirect URLs: add `https://yojigen-poketto.netlify.app/**`
+(Change both when the domain is connected.) The owner, yujigenpoketto@gmail.com, becomes admin on first
+sign-in at `/admin/login` with "Email me a sign-in link". Open the link on the same device.
+
 ## Environment variables
 
 | Name | Public? | What it is | Set by |
@@ -64,4 +71,5 @@ Later phases add Pathao, Meta CAPI, GA4, TikTok, Resend and SMS keys; they will 
 - [ ] Remove sample products (a migration deletes `is_sample` products and `/public/sample`)
 - [ ] Real delivery times confirmed (outskirts is set to "2–3 days" as a placeholder)
 - [ ] Owner reviewed About / Returns / Privacy / Terms text
-- [ ] Supabase moved to the Pro plan (free plan pauses after 7 idle days and has no backups)
+- [ ] Supabase moved to the Pro plan (free plan pauses after 7 idle days and has no backups); then enable Auth → Leaked password protection
+- [ ] Delete the two disabled `claude-test-*@selftest.local` users (Authentication → Users)

@@ -46,9 +46,16 @@ caching the *data* (`unstable_cache`, tag `catalog`, 10-minute fallback), not wh
 is never cropped (`object-fit: contain` on a neutral background). Sample images are bundled in
 `/public/sample` until launch.
 
+**Staff and roles.** Staff sign in with Supabase Auth (email link, optional password). `private.staff_role()`
+reads the `staff` table; RLS policies and every `admin_*` function check it, so the UI hiding a button is
+only a convenience. A pending invite becomes a staff row the first time that *verified* email signs in.
+`private.audit()` triggers record every write made by a signed-in user (who, role, table, row, before/after).
+Packers only ever see confirmed/dispatched orders. `admin_set_status` can never set `confirmed`; that is only
+`admin_confirm_order`, which also sets `marketing_status = confirmed` for the phase 6 Purchase sweep.
+
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
-safe on production. Unit tests cover the JS side. A smoke test renders every page after the build.
+safe on production. `run_admin_self_tests()` adds 16 role/permission checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
 
 ## Status by phase
 
@@ -56,7 +63,7 @@ safe on production. Unit tests cover the JS side. A smoke test renders every pag
 |---|---|
 | 1. Schema, RLS, core RPCs | Done |
 | 2. Storefront, checkout, COD orders | Live; full order journey verified on the live site at 375px |
-| 3. Admin panel, staff roles, audit | Not started (tables `staff`, `audit_log` exist) |
+| 3. Admin panel, staff roles, audit | Done: dashboard, orders (confirm / reject / status / edit / manual / invoice / CSV), customer check, abandoned carts, team, settings + maintenance mode, audit log. Browser-tested at 375px with temporary admin + packer accounts |
 | 4. Image upload, catalogue management | Not started |
 | 5. Pathao | Not started |
 | 6. Meta Pixel + CAPI, GA4, TikTok | Not started; `lib/track.js` is a no-op until then, and fbp/fbc/landing URL are already stored on orders |
@@ -67,8 +74,14 @@ safe on production. Unit tests cover the JS side. A smoke test renders every pag
 
 - **Old Singapore database** (`yojigen-poketto-shop`) is paused, not deleted. It holds only one test
   order. Delete it from the Supabase dashboard once you're happy with the Ohio one.
-- **No admin yet.** Until phase 3, orders can only be seen in the Supabase table editor.
-- **Maintenance mode** has a database flag but no switch or page yet (phase 3).
+- **Staff sign-in by email link** depends on Supabase's built-in email sender (a few emails per hour) until
+  Resend is set up in phase 7. The link must be opened in the same browser that requested it.
+- **Customer check** uses only our own order history; Pathao's data arrives with phase 5.
+- **Temporary test accounts** `claude-test-admin@selftest.local` and `claude-test-packer@selftest.local`
+  are disabled and locked; delete them in Supabase → Authentication → Users. Five cancelled test orders
+  (names starting "TEST") remain for the record.
+- **Migration 0010** was applied by the owner in the SQL editor (the Supabase connector's confirmation
+  prompt could not be answered); it is recorded in the migration history like the others.
 - **Customer accounts** (phone OTP, email, Google) are phase 7; checkout is guest-only for now.
 - **Double-submit protection** is the disabled button only; a network retry could in theory place a
   second order. An idempotency key is planned with the admin work.
