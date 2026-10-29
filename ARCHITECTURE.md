@@ -45,6 +45,20 @@ caching the *data* (`unstable_cache`, tag `catalog`, 10-minute fallback), not wh
 **Images.** Stored as WebP at several widths (`<key>-<width>.webp`) and served with `srcset`; the product
 is never cropped (`object-fit: contain` on a neutral background). Sample images are bundled in
 `/public/sample` until launch.
+Uploads: the browser shrinks a photo to at most 2400px (keeps Netlify's 6 MB request limit) and posts it
+to `/api/admin/upload` (admin/manager only), where `sharp` fixes phone rotation and writes WebP sizes into
+the public `product-images` bucket under `products/<uuid>/<uuid>` or `banners/...`. It never upscales.
+The product/banner row that points at the files is saved separately by a role-checked `admin_save_*`
+function, which only accepts keys of that exact shape. Files nobody points at (abandoned uploads,
+removed photos, deleted products) are removed by the nightly `sweep-orphan-images` pg_cron job, which
+calls `/api/sweep/storage` with a secret header (secret kept in Supabase Vault); running it twice is harmless.
+
+**Catalogue management.** Products (colours, photos with drag/arrow ordering, rich-text description
+cleaned by `lib/sanitize.js`, SEO fields), bulk status/price/%/stock changes, categories, banners
+(separate desktop and mobile images, optional schedule) and coupons all write through `admin_*`
+functions. Spreadsheet import (`docs/product-upload-template.xlsx`) is checked first, refuses titles that
+already exist, then imports all rows or none (`admin_import_products`); photos are matched to products
+by the file names listed in the sheet.
 
 **Staff and roles.** Staff sign in with Supabase Auth (email link, optional password). `private.staff_role()`
 reads the `staff` table; RLS policies and every `admin_*` function check it, so the UI hiding a button is
@@ -55,7 +69,8 @@ Packers only ever see confirmed/dispatched orders. `admin_set_status` can never 
 
 **Tests.** `run_self_tests()` in the database runs 38 checks (phones, zones in Bangla and English,
 coupons, free delivery, stock, place_order) inside a transaction that is always rolled back, so it is
-safe on production. `run_admin_self_tests()` adds 16 role/permission checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
+safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
+`run_catalog_self_tests()` 13 catalogue checks the same way. Unit tests cover the JS side. A smoke test renders every page after the build.
 
 ## Status by phase
 
@@ -64,7 +79,7 @@ safe on production. `run_admin_self_tests()` adds 16 role/permission checks the 
 | 1. Schema, RLS, core RPCs | Done |
 | 2. Storefront, checkout, COD orders | Live; full order journey verified on the live site at 375px |
 | 3. Admin panel, staff roles, audit | Done: dashboard, orders (confirm / reject / status / edit / manual / invoice / CSV), customer check, abandoned carts, team, settings + maintenance mode, audit log. Browser-tested at 375px with temporary admin + packer accounts |
-| 4. Image upload, catalogue management | Not started |
+| 4. Image upload, catalogue management | Built. Products, colours, categories, coupons, bulk edit and spreadsheet import browser-tested at 375px and desktop against the real database. Live photo upload and delete buttons are tested once migration 0013 is applied |
 | 5. Pathao | Not started |
 | 6. Meta Pixel + CAPI, GA4, TikTok | Not started; `lib/track.js` is a no-op until then, and fbp/fbc/landing URL are already stored on orders |
 | 7. Emails, SMS OTP, accounts | Not started |
@@ -81,7 +96,9 @@ safe on production. `run_admin_self_tests()` adds 16 role/permission checks the 
   are disabled and locked; delete them in Supabase → Authentication → Users. Five cancelled test orders
   (names starting "TEST") remain for the record.
 - **Migration 0010** was applied by the owner in the SQL editor (the Supabase connector's confirmation
-  prompt could not be answered); it is recorded in the migration history like the others.
+  prompt could not be answered); it is recorded in the migration history like the others. **Migration
+  0013** (catalogue delete functions) must be applied the same way; until then builds stop at the
+  database self-tests.
 - **Customer accounts** (phone OTP, email, Google) are phase 7; checkout is guest-only for now.
 - **Double-submit protection** is the disabled button only; a network retry could in theory place a
   second order. An idempotency key is planned with the admin work.
