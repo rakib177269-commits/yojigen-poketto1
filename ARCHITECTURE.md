@@ -95,10 +95,8 @@ safe on production. `run_admin_self_tests()` adds 16 role/permission checks and
 - **Temporary test accounts** `claude-test-admin@selftest.local` and `claude-test-packer@selftest.local`
   are disabled and locked; delete them in Supabase → Authentication → Users. Five cancelled test orders
   (names starting "TEST") remain for the record.
-- **Migration 0010** was applied by the owner in the SQL editor (the Supabase connector's confirmation
-  prompt could not be answered); it is recorded in the migration history like the others. **Migration
-  0013** (catalogue delete functions) must be applied the same way; until then builds stop at the
-  database self-tests.
+- **Migrations 0010 and 0013** were applied by the owner in the SQL editor (the Supabase connector's
+  confirmation prompt could not be answered); they are recorded in the migration history like the others.
 - **Customer accounts** (phone OTP, email, Google) are phase 7; checkout is guest-only for now.
 - **Double-submit protection** is the disabled button only; a network retry could in theory place a
   second order. An idempotency key is planned with the admin work.
