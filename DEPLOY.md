@@ -5,7 +5,7 @@
 | Thing | Where |
 |---|---|
 | Code | GitHub `rakib177269-commits/yojigen-poketto1`, branch `main` |
-| Hosting | Netlify project `yojigen-poketto` → https://yojigen-poketto.netlify.app |
+| Hosting | Netlify project `yojigen-poketto` → https://yojigen-pokettobd.com (domain from Hostinger, DNS run by Netlify) |
 | Database, auth, storage | Supabase project `yojigen-poketto` (ref `siucsvsvrpqbfpmbnxlx`, Ohio `us-east-2`), free plan |
 
 ## One-time setup (owner)
@@ -36,8 +36,8 @@ If you ever upgrade Netlify and pick Singapore for functions, move the database 
 
 ### 4. Staff sign-in links (Supabase Auth)
 Supabase → **Authentication → URL Configuration**:
-- Site URL: `https://yojigen-poketto.netlify.app`
-- Redirect URLs: add `https://yojigen-poketto.netlify.app/**`
+- Site URL: `https://yojigen-pokettobd.com`
+- Redirect URLs: add `https://yojigen-pokettobd.com/**` and `https://www.yojigen-pokettobd.com/**`
 (Change both when the domain is connected.)
 
 Then make email links work on any device. Supabase → **Authentication → Emails → Templates**. In both
@@ -56,7 +56,7 @@ set a password under "My account" after their first sign-in.
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | `https://siucsvsvrpqbfpmbnxlx.supabase.co` | done |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase publishable key. RLS limits it to reading the active catalogue. | done |
-| `NEXT_PUBLIC_SITE_URL` | yes | `https://yojigen-poketto.netlify.app` (change when the domain is connected) | done |
+| `NEXT_PUBLIC_SITE_URL` | yes | `https://yojigen-pokettobd.com` | done |
 | `SUPABASE_SERVICE_ROLE_KEY` | **SECRET** | Lets our server call the order functions. | **owner** (step 2) |
 
 Later phases add Pathao, Meta CAPI, GA4, TikTok, Resend and SMS keys; they will be listed here when built.
@@ -71,10 +71,16 @@ Later phases add Pathao, Meta CAPI, GA4, TikTok, Resend and SMS keys; they will 
 - **Env var change not showing:** redeploy, since values are baked in at build time.
 - **Checkout says "Something went wrong on our side":** the service key is missing or wrong (step 2). Netlify → Logs → Functions shows `SUPABASE_SERVICE_ROLE_KEY is not set`.
 
-## Connecting a domain (later)
-1. Buy the domain. Netlify → **Domain management → Add a domain** → follow the DNS instructions (Netlify DNS or your registrar's records).
-2. Change `NEXT_PUBLIC_SITE_URL` to `https://yourdomain` and redeploy.
-3. Email (Resend) needs SPF/DKIM DNS records on the domain; that step comes in phase 7.
+## Domain
+`yojigen-pokettobd.com` was bought at Hostinger. Its nameservers point to Netlify DNS (`dns1–4.p06.nsone.net`),
+so Netlify manages the records, the `www` redirect and the HTTPS certificate. Hostinger's own DNS records are
+no longer used. If the domain ever changes:
+1. Netlify → **Domain management** → add the new domain; set it as primary.
+2. Change `NEXT_PUBLIC_SITE_URL` in Netlify and redeploy.
+3. Add a migration updating `private.app_config.site_url` (background jobs call the site there).
+4. Supabase → Authentication → URL Configuration: Site URL + Redirect URLs (see step 4 above).
+5. Pathao webhook URL (phase 5) and, later, Meta/Google/TikTok domain settings.
+6. Email (Resend) needs SPF/DKIM DNS records on the domain; that step comes in phase 7.
 
 ## Before launch (checklist, kept up to date)
 - [ ] Remove sample products (a migration deletes `is_sample` products and `/public/sample`)

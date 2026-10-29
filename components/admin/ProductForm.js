@@ -5,6 +5,7 @@ import { saveProduct, deleteProduct } from '../../lib/admin/catalog-actions.js';
 import ImageUploader from './ImageUploader.js';
 import RichText from './RichText.js';
 import ActionButton from './ActionButton.js';
+import { SITE } from '../../lib/site.js';
 
 const STATUSES = [['active', 'Active — visible in the shop'], ['draft', 'Draft — not visible yet'],
   ['hidden', 'Hidden — temporarily off the shop'], ['archived', 'Archived — no longer sold']];
@@ -92,7 +93,7 @@ export default function ProductForm({ product, categories, canDelete }) {
         <div className="form-grid" style={{ marginTop: 12 }}>
           <div className="field"><label htmlFor="p-slug">Web address</label>
             <input id="p-slug" className="input" value={f.slug} onChange={set('slug')} placeholder="made from the title" />
-            <span className="hint">yojigen-poketto.netlify.app/p/{f.slug || '…'}</span></div>
+            <span className="hint">{SITE.url.replace(/^https:\/\//, '')}/p/{f.slug || '…'}</span></div>
           <div className="field"><label htmlFor="p-seo-t">SEO title</label><input id="p-seo-t" className="input" value={f.seo_title} onChange={set('seo_title')} maxLength={70} /></div>
           <div className="field"><label htmlFor="p-seo-d">SEO description</label><textarea id="p-seo-d" className="textarea" value={f.seo_description} onChange={set('seo_description')} maxLength={160} /></div>
         </div>

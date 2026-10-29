@@ -3,7 +3,7 @@
 Online shop for gadgets, gifts, cute items and accessories in Bangladesh.
 Cash on Delivery, Pathao courier, mobile-first.
 
-- **Live:** https://yojigen-poketto.netlify.app
+- **Live:** https://yojigen-pokettobd.com (also https://yojigen-poketto.netlify.app)
 - **Stack:** Next.js 16 (App Router) on Netlify, Supabase (Postgres, Auth, Storage, pg_cron)
 - **Docs:** [DEPLOY.md](DEPLOY.md) (settings and env vars), [ARCHITECTURE.md](ARCHITECTURE.md) (what was built and why)
 
